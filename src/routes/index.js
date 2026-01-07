@@ -29,6 +29,15 @@ const {
   getClothesByShopId
 } = require('../controllers/clothesController');
 
+const {
+  bindShop,
+  unbindShop,
+  getBoundShops,
+  addFavoriteClothes,
+  removeFavoriteClothes,
+  getFavoriteClothes
+} = require('../controllers/userBindingController');
+
 // ==================== 用户路由 ====================
 
 // 公开路由（不需要认证）
@@ -57,6 +66,18 @@ router.post('/shop/create', authMiddleware, createShop);                   // �
 // 衣服相关接口（需要认证）
 router.post('/clothes/create', authMiddleware, createClothes);             // 创建衣服
 router.get('/clothes/shop/:shopId', authMiddleware, getClothesByShopId);   // 获取指定店铺的所有衣服
+
+// ==================== 用户绑定路由 ====================
+
+// 店铺绑定相关接口（需要认证）
+router.post('/binding/shop', authMiddleware, bindShop);                    // 绑定店铺
+router.delete('/binding/shop/:shopId', authMiddleware, unbindShop);        // 取消绑定店铺
+router.get('/binding/shops', authMiddleware, getBoundShops);               // 获取所有绑定的店铺
+
+// 衣服收藏相关接口（需要认证）
+router.post('/binding/favorite', authMiddleware, addFavoriteClothes);      // 添加收藏衣服
+router.delete('/binding/favorite/:clothesId', authMiddleware, removeFavoriteClothes); // 取消收藏衣服
+router.get('/binding/favorites', authMiddleware, getFavoriteClothes);      // 获取所有收藏的衣服
 
 // ==================== 健康检查 ====================
 router.get('/health', (req, res) => {

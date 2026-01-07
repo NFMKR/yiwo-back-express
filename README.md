@@ -247,7 +247,3 @@ A: 请检查：
 ## License
 
 MIT
-
-## 作者
-
-Yiwo Project Team

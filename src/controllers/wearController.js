@@ -103,33 +103,3 @@ exports.getUserTasks = async (req, res) => {
     });
   }
 };
-
-// 使用默认值创建测试任务（用于快速测试）
-exports.createTestTask = async (req, res) => {
-  try {
-    const userId = req.user.userId; // 从认证中间件获取
-    
-    // 使用文档中的默认示例图片
-    const defaultTaskData = {
-      person_image_url: 'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250626/ubznva/model_person.png',
-      top_garment_url: 'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250626/epousa/short_sleeve.jpeg',
-      bottom_garment_url: 'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250626/rchumi/pants.jpeg',
-      resolution: -1,
-      restore_face: true
-    };
-
-    const result = await wearService.createTryOnTask(userId, defaultTaskData);
-
-    res.status(201).json({
-      success: true,
-      message: '测试任务创建成功',
-      data: result
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message || '创建测试任务失败'
-    });
-  }
-};
-

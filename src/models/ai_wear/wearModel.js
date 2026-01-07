@@ -84,9 +84,8 @@ const wearSchema = new mongoose.Schema({
 });
 
 // 更新时间戳
-wearSchema.pre('save', function(next) {
+wearSchema.pre('save', function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 module.exports = mongoose.model('Wear', wearSchema);

@@ -5,8 +5,12 @@ const cors = require('cors');
 const helmet = require('helmet');
 const bodyParser = require('body-parser');
 const routes = require('./src/routes'); // 路由
+const { connectDB } = require('./src/config'); // 数据库配置
 
 const app = express();
+
+// 连接数据库
+connectDB();
 
 // 中间件配置
 app.use(morgan('dev'));  // HTTP 请求日志
@@ -22,4 +26,5 @@ app.use('/api', routes);  // 路由前缀为 /api
 const port = process.env.PORT || 5002;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+  console.log(`mongodb ${process.env.MONGODB_URI}`)
 });

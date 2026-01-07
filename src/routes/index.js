@@ -24,6 +24,11 @@ const {
   createShop
 } = require('../controllers/shopController');
 
+const {
+  createClothes,
+  getClothesByShopId
+} = require('../controllers/clothesController');
+
 // ==================== 用户路由 ====================
 
 // 公开路由（不需要认证）
@@ -46,6 +51,12 @@ router.get('/wear/tasks', authMiddleware, getUserTasks);                   // �
 
 // 创建商家店铺（需要认证）
 router.post('/shop/create', authMiddleware, createShop);                   // 创建商家店铺
+
+// ==================== 衣服管理路由 ====================
+
+// 衣服相关接口（需要认证）
+router.post('/clothes/create', authMiddleware, createClothes);             // 创建衣服
+router.get('/clothes/shop/:shopId', authMiddleware, getClothesByShopId);   // 获取指定店铺的所有衣服
 
 // ==================== 健康检查 ====================
 router.get('/health', (req, res) => {

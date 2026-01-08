@@ -89,7 +89,7 @@ router.get('/binding/favorites', authMiddleware, getFavoriteClothes);      // �
 
 // 模特相关接口（需要认证）
 router.post('/models/add', authMiddleware, addModel);                      // 添加模特
-router.get('/models', authMiddleware, getModels);                          // 获取模特列表（支持分类筛选）
+router.get('/models', getModels);                          // 获取模特列表（支持分类筛选）
 router.get('/models/filter-options', authMiddleware, getFilterOptions);   // 获取筛选选项
 
 // ==================== 健康检查 ====================

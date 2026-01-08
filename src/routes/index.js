@@ -38,6 +38,12 @@ const {
   getFavoriteClothes
 } = require('../controllers/userBindingController');
 
+const {
+  addModel,
+  getModels,
+  getFilterOptions
+} = require('../controllers/modelPersonController');
+
 // ==================== 用户路由 ====================
 
 // 公开路由（不需要认证）
@@ -78,6 +84,13 @@ router.get('/binding/shops', authMiddleware, getBoundShops);               // �
 router.post('/binding/favorite', authMiddleware, addFavoriteClothes);      // 添加收藏衣服
 router.delete('/binding/favorite/:clothesId', authMiddleware, removeFavoriteClothes); // 取消收藏衣服
 router.get('/binding/favorites', authMiddleware, getFavoriteClothes);      // 获取所有收藏的衣服
+
+// ==================== 模特管理路由 ====================
+
+// 模特相关接口（需要认证）
+router.post('/models/add', authMiddleware, addModel);                      // 添加模特
+router.get('/models', authMiddleware, getModels);                          // 获取模特列表（支持分类筛选）
+router.get('/models/filter-options', authMiddleware, getFilterOptions);   // 获取筛选选项
 
 // ==================== 健康检查 ====================
 router.get('/health', (req, res) => {

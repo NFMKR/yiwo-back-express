@@ -103,3 +103,28 @@ exports.getUserTasks = async (req, res) => {
     });
   }
 };
+
+// 获取用户的试穿记录（只返回成功的试穿记录）
+exports.getUserTryOnRecords = async (req, res) => {
+  try {
+    const userId = req.user.userId; // 从认证中间件获取
+    const { page, limit } = req.query;
+
+    const options = {};
+    if (page) options.page = parseInt(page);
+    if (limit) options.limit = parseInt(limit);
+
+    const result = await wearService.getUserTryOnRecords(userId, options);
+
+    res.status(200).json({
+      success: true,
+      message: '获取试穿记录成功',
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || '获取试穿记录失败'
+    });
+  }
+};

@@ -17,7 +17,8 @@ const {
   createTryOnTask,
   getTaskResult,
   getUserTasks,
-  createTestTask
+  createTestTask,
+  getUserTryOnRecords
 } = require('../controllers/wearController');
 
 const {
@@ -61,6 +62,7 @@ router.get('/users', authMiddleware, getUsers);                 // 获取所有�
 router.post('/wear/try-on', authMiddleware, createTryOnTask);              // 创建试穿任务
 router.get('/wear/tasks/:taskId', authMiddleware, getTaskResult);          // 查询任务结果
 router.get('/wear/tasks', authMiddleware, getUserTasks);                   // 获取用户所有任务
+router.get('/wear/records', authMiddleware, getUserTryOnRecords);          // 获取用户试穿记录
 
 // ==================== 商家店铺路由 ====================
 

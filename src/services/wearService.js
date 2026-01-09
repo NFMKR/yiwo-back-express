@@ -246,3 +246,47 @@ exports.getUserTasks = async (userId, options = {}) => {
   }
 };
 
+// 获取用户的试穿记录（只返回成功的试穿记录）
+exports.getUserTryOnRecords = async (userId, options = {}) => {
+  try {
+    const { page = 1, limit = 20 } = options;
+    
+    // 只查询成功的试穿记录，且必须有图片URL
+    const query = {
+      userId,
+      taskStatus: 'SUCCEEDED',
+      imageUrl: { $ne: null } // 确保有试穿效果图
+    };
+
+    const records = await Wear.find(query)
+      .sort({ endTime: -1 }) // 按完成时间倒序，最新的在前面
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .select('imageUrl endTime topGarmentUrl bottomGarmentUrl taskId createdAt');
+
+    const total = await Wear.countDocuments(query);
+
+    // 格式化返回数据
+    const formattedRecords = records.map(record => ({
+      taskId: record.taskId,
+      resultImageUrl: record.imageUrl, // 试穿效果图
+      endTime: record.endTime, // 完成时间
+      topGarmentUrl: record.topGarmentUrl, // 上衣图片
+      bottomGarmentUrl: record.bottomGarmentUrl, // 下衣图片
+      createdAt: record.createdAt // 创建时间
+    }));
+
+    return {
+      records: formattedRecords,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+

@@ -40,8 +40,5 @@ userBindingSchema.pre('save', function() {
   this.updatedAt = Date.now();
 });
 
-// 索引优化
-userBindingSchema.index({ userId: 1 });
-
 module.exports = mongoose.model('UserBinding', userBindingSchema);
 

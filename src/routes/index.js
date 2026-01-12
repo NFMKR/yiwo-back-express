@@ -17,7 +17,6 @@ const {
   createTryOnTask,
   getTaskResult,
   getUserTasks,
-  createTestTask,
   getUserTryOnRecords
 } = require('../controllers/wearController');
 

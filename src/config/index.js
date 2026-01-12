@@ -16,6 +16,6 @@ module.exports = {
   connectDB,
   jwtSecret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
   dashscopeApiKey: process.env.DASHSCOPE_API_KEY,
-  dashscopeApiUrl: process.env.DASHSCOPE_API_URL
+  dashscopeApiUrl: process.env.DASHSCOPE_API_URL || 'https://dashscope.aliyuncs.com/api/v1'
 };
 

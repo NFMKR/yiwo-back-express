@@ -1,0 +1,51 @@
+# Node modules
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Documentation
+docs
+README.md
+TODO.md
+
+# Test files
+test
+tests
+*.test.js
+*.spec.js
+
+# Build artifacts
+dist
+build
+*.map
+
+# Temporary files
+tmp
+temp
+.cache
+

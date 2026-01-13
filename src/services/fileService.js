@@ -210,6 +210,28 @@ exports.uploadFile = async (userId, localFilePath, options = {}) => {
 
     // 上传到微信云存储
     const uploadResult = await wechatCloudStorageService.uploadToWechatCloud(localFilePath, cloudPath);
+    
+    console.log('上传结果:', {
+      hasResult: !!uploadResult,
+      file_id: uploadResult?.file_id,
+      cloud_path: uploadResult?.cloud_path,
+      file_url: uploadResult?.file_url,
+      file_size: uploadResult?.file_size
+    });
+
+    // 验证上传结果
+    if (!uploadResult) {
+      throw new Error('上传失败：未返回结果');
+    }
+    if (!uploadResult.file_id) {
+      throw new Error('上传失败：file_id为空');
+    }
+    if (!uploadResult.cloud_path) {
+      throw new Error('上传失败：cloud_path为空');
+    }
+    if (!uploadResult.file_url) {
+      throw new Error('上传失败：file_url为空');
+    }
 
     // 保存文件信息到数据库
     const fileInfo = await exports.saveFileInfo(userId, {

@@ -33,7 +33,20 @@ exports.wechatLogin = async (req, res) => {
 // 用户退出
 exports.logout = async (req, res) => {
   try {
-    const userId = req.user.userId; // 从认证中间件获取
+    // 检查是否通过认证中间件
+    if (!req.user || !req.user.userId) {
+      console.error('退出失败: 用户信息不存在', {
+        hasUser: !!req.user,
+        userId: req.user?.userId
+      });
+      return res.status(401).json({
+        success: false,
+        message: '未通过认证，无法退出'
+      });
+    }
+
+    const userId = req.user.userId;
+    console.log('用户退出请求:', { userId });
 
     const result = await userService.logout(userId);
 
@@ -43,6 +56,11 @@ exports.logout = async (req, res) => {
       data: result
     });
   } catch (error) {
+    console.error('退出失败:', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.userId
+    });
     res.status(400).json({
       success: false,
       message: error.message || '退出失败'

@@ -1,6 +1,6 @@
 // src/services/modelPersonService.js
 
-const ModelPerson = require('../models/modelPersonModel');
+const ModelPerson = require('../models/model/modelPersonModel');
 
 // 添加模特
 exports.addModel = async (modelData) => {

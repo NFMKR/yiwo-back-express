@@ -1,6 +1,6 @@
 // src/services/userBindingService.js
 
-const UserBinding = require('../models/userBindingModel');
+const UserBinding = require('../models/collect/userBindingModel');
 const Shop = require('../models/shop/shopModel');
 const Clothes = require('../models/clothes/clothesModel');
 

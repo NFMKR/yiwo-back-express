@@ -1,77 +1,56 @@
 // src/services/userService.js
 
-const User = require('../models/userModel');
+const User = require('../models/user/userModel');
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config');
+const { getWeChatOpenId } = require('../utils/wechatApi');
 
-// 用户注册
-exports.register = async (userData) => {
+// 微信小程序登录/注册（一键登录）
+exports.wechatLogin = async (code, userInfo = {}) => {
   try {
-    const { name, email, password } = userData;
-
-    // 检查用户是否已存在
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      throw new Error('用户已存在');
+    if (!code) {
+      throw new Error('微信code不能为空');
     }
 
-    // 创建新用户
-    const user = new User({
-      name,
-      email,
-      password
-    });
+    // 通过code获取openid
+    const wechatData = await getWeChatOpenId(code);
+    const { openid, session_key, unionid } = wechatData;
 
-    await user.save();
+    if (!openid) {
+      throw new Error('获取微信openid失败');
+    }
 
-    // 生成token
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      jwtSecret,
-      { expiresIn: '7d' }
-    );
+    // 查找用户（通过openid）
+    let user = await User.findOne({ openid });
 
-    // 保存token到用户记录
-    user.token = token;
-    await user.save();
-
-    return {
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt
-      },
-      token
-    };
-  } catch (error) {
-    throw error;
-  }
-};
-
-// 用户登录
-exports.login = async (email, password) => {
-  try {
-    // 查找用户
-    const user = await User.findOne({ email });
     if (!user) {
-      throw new Error('用户不存在');
+      // 新用户，自动注册
+      user = new User({
+        openid,
+        wxName: userInfo.nickName || userInfo.wxName || '',
+        wxAvatarUrl: userInfo.avatarUrl || userInfo.wxAvatarUrl || '',
+        name: userInfo.name || userInfo.nickName || '',
+        avatarUrl: userInfo.avatarUrl || '',
+        registeredShops: []
+      });
+    } else {
+      // 老用户，更新微信信息
+      if (userInfo.nickName || userInfo.wxName) {
+        user.wxName = userInfo.nickName || userInfo.wxName;
+      }
+      if (userInfo.avatarUrl || userInfo.wxAvatarUrl) {
+        user.wxAvatarUrl = userInfo.avatarUrl || userInfo.wxAvatarUrl;
+      }
     }
 
-    // 验证密码
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      throw new Error('密码错误');
-    }
-
-    // 生成新的token
+    // 生成JWT token
     const token = jwt.sign(
-      { userId: user._id, email: user.email },
+      { userId: user._id, openid: user.openid },
       jwtSecret,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' } // 微信登录token有效期30天
     );
 
-    // 更新token
+    // 保存token
     user.token = token;
     user.updatedAt = Date.now();
     await user.save();
@@ -79,8 +58,17 @@ exports.login = async (email, password) => {
     return {
       user: {
         id: user._id,
-        name: user.name,
-        email: user.email
+        openid: user.openid,
+        name: user.name || user.wxName,
+        wxName: user.wxName,
+        email: user.email,
+        userphone: user.userphone,
+        shopPhone: user.shopPhone,
+        avatarUrl: user.avatarUrl || user.wxAvatarUrl,
+        wxAvatarUrl: user.wxAvatarUrl,
+        qrcodeUrl: user.qrcodeUrl,
+        registeredShops: user.registeredShops,
+        createdAt: user.createdAt
       },
       token
     };
@@ -118,8 +106,16 @@ exports.getUserInfo = async (userId) => {
 
     return {
       id: user._id,
-      name: user.name,
+      name: user.name || user.wxName,
+      wxName: user.wxName,
       email: user.email,
+      userphone: user.userphone,
+      shopPhone: user.shopPhone,
+      openid: user.openid,
+      avatarUrl: user.avatarUrl || user.wxAvatarUrl,
+      wxAvatarUrl: user.wxAvatarUrl,
+      qrcodeUrl: user.qrcodeUrl,
+      registeredShops: user.registeredShops,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };
@@ -128,13 +124,116 @@ exports.getUserInfo = async (userId) => {
   }
 };
 
-// 获取所有用户（可选）
-exports.getAllUsers = async () => {
+// 更新用户信息
+exports.updateUserInfo = async (userId, updateData) => {
   try {
-    const users = await User.find().select('-password -token');
-    return users;
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+
+    // 允许更新的字段
+    const allowedFields = [
+      'name', 'email', 'userphone', 'shopPhone', 
+      'avatarUrl', 'qrcodeUrl', 'wxName', 'wxAvatarUrl'
+    ];
+
+    // 更新允许的字段
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        user[field] = updateData[field];
+      }
+    });
+
+    // 如果更新密码
+    if (updateData.password) {
+      user.password = updateData.password; // 会在pre('save')中自动加密
+    }
+
+    user.updatedAt = Date.now();
+    await user.save();
+
+    return {
+      id: user._id,
+      name: user.name || user.wxName,
+      wxName: user.wxName,
+      email: user.email,
+      userphone: user.userphone,
+      shopPhone: user.shopPhone,
+      avatarUrl: user.avatarUrl || user.wxAvatarUrl,
+      wxAvatarUrl: user.wxAvatarUrl,
+      qrcodeUrl: user.qrcodeUrl,
+      registeredShops: user.registeredShops,
+      updatedAt: user.updatedAt
+    };
   } catch (error) {
     throw error;
   }
 };
 
+// 注销账号
+exports.deleteAccount = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+
+    // 删除用户
+    await User.findByIdAndDelete(userId);
+
+    return { message: '账号注销成功' };
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 添加注册店铺
+exports.addRegisteredShop = async (userId, shopData) => {
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+
+    const { shopId, shopAvatarUrl, shopName, shopIdValue, memberLevel } = shopData;
+
+    // 检查是否已注册该店铺
+    const existingShop = user.registeredShops.find(
+      shop => shop.shopId.toString() === shopId.toString()
+    );
+
+    if (existingShop) {
+      throw new Error('该店铺已注册');
+    }
+
+    // 添加店铺
+    user.registeredShops.push({
+      shopId,
+      shopAvatarUrl: shopAvatarUrl || '',
+      shopName: shopName || '',
+      shopIdValue: shopIdValue || '',
+      memberLevel: memberLevel || '普通会员'
+    });
+
+    user.updatedAt = Date.now();
+    await user.save();
+
+    return {
+      message: '店铺注册成功',
+      registeredShops: user.registeredShops
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 获取所有用户（可选，用于测试）
+exports.getAllUsers = async () => {
+  try {
+    const users = await User.find().select('-password -token -openid');
+    return users;
+  } catch (error) {
+    throw error;
+  }
+};

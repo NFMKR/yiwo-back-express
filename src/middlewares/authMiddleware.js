@@ -2,7 +2,7 @@
 
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config');
-const User = require('../models/userModel');
+const User = require('../models/user/userModel');
 
 // 认证中间件
 const authMiddleware = async (req, res, next) => {
@@ -51,8 +51,9 @@ const authMiddleware = async (req, res, next) => {
     // 将用户信息附加到请求对象
     req.user = {
       userId: user._id,
+      openid: user.openid,
       email: user.email,
-      name: user.name
+      name: user.name || user.wxName
     };
     req.token = token;
 

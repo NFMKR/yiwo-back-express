@@ -6,10 +6,11 @@ const authMiddleware = require('../middlewares/authMiddleware');
 
 // 控制器
 const { 
-  register, 
-  login, 
+  wechatLogin,
   logout, 
-  getUserInfo, 
+  getUserInfo,
+  updateUserInfo,
+  deleteAccount,
   getUsers 
 } = require('../controllers/userController');
 
@@ -47,13 +48,14 @@ const {
 // ==================== 用户路由 ====================
 
 // 公开路由（不需要认证）
-router.post('/users/register', register);        // 用户注册
-router.post('/users/login', login);              // 用户登录
+router.post('/users/wechat-login', wechatLogin);                // 微信小程序一键登录/注册
 
 // 受保护路由（需要认证）
 router.post('/users/logout', authMiddleware, logout);           // 用户退出
-router.get('/users/me', authMiddleware, getUserInfo);           // 获取当前用户信息
-router.get('/users', authMiddleware, getUsers);                 // 获取所有用户
+router.get('/users/me', authMiddleware, getUserInfo);          // 获取当前用户信息
+router.put('/users/me', authMiddleware, updateUserInfo);       // 更新用户信息
+router.delete('/users/me', authMiddleware, deleteAccount);     // 注销账号
+router.get('/users', authMiddleware, getUsers);                 // 获取所有用户（测试用）
 
 // ==================== AI试穿路由 ====================
 

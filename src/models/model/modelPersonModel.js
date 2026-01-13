@@ -1,65 +1,151 @@
-// src/models/modelPersonModel.js
+// src/models/model/modelPersonModel.js
 
 const mongoose = require('mongoose');
 
-const modelPersonSchema = new mongoose.Schema({
-  modelId: {
+// 模特图片数组中的单个图片对象结构
+const modelImageSchema = new mongoose.Schema({
+  full_body_image_url: {
     type: String,
+    required: true
+  }
+}, { _id: false });
+
+const modelPersonSchema = new mongoose.Schema({
+  // 绑定用户（1:1关系）
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true,
     unique: true,
+    index: true
+  },
+  // 模特ID（可选，用于兼容）
+  model_id: {
+    type: String,
+    default: null,
     trim: true
   },
-  modelName: {
+  // 模特名字
+  model_name: {
     type: String,
-    required: true,
+    default: '',
     trim: true
   },
-  avatarUrl: {
-    type: String,
-    required: true
+  // 头像URL数组（每个元素包含全身图）
+  avatar_images: {
+    type: [modelImageSchema],
+    default: []
   },
-  fullBodyImageUrl: {
+  // 当前模特头像URL
+  current_avatar_url: {
     type: String,
-    required: true
+    default: ''
   },
-  // 特征参数
+  // 当前试穿效果图URL
+  current_tryon_image_url: {
+    type: String,
+    default: ''
+  },
+  // 性别
   gender: {
     type: String,
-    required: true,
     enum: ['男', '女', '中性'],
+    default: null,
     index: true
   },
-  ageStage: {
+  // 年龄阶段
+  age_stage: {
     type: String,
-    required: true,
     enum: ['儿童', '青少年', '青年', '中年', '老年'],
+    default: null,
     index: true
   },
-  bodyFeature: {
+  // 身高（单位：cm）
+  height: {
+    type: Number,
+    default: null,
+    min: 0,
+    max: 300
+  },
+  // 体重（单位：kg）
+  weight: {
+    type: Number,
+    default: null,
+    min: 0,
+    max: 300
+  },
+  // 身体特征
+  body_feature: {
     type: String,
-    required: true,
     enum: ['纤瘦', '标准', '健壮', '丰满', '运动型'],
+    default: null,
     index: true
   },
-  personStyle: {
+  // 适合天气
+  suitable_weather: {
     type: String,
-    required: true,
-    enum: ['休闲', '商务', '时尚', '运动', '甜美', '帅气', '优雅', '街头'],
-    index: true
+    enum: ['春季', '夏季', '秋季', '冬季', '四季'],
+    default: null
   },
-  heightStage: {
+  // 拍摄风格
+  shooting_style: {
     type: String,
-    required: true,
-    enum: ['150cm以下', '150-160cm', '160-170cm', '170-180cm', '180cm以上'],
-    index: true
+    enum: ['自然', '时尚', '商务', '休闲', '运动', '甜美', '帅气', '优雅', '街头', '其他'],
+    default: null
   },
-  weightStage: {
+  // 心情
+  mood: {
     type: String,
-    required: true,
-    enum: ['40kg以下', '40-50kg', '50-60kg', '60-70kg', '70-80kg', '80kg以上'],
-    index: true
+    enum: ['开心', '平静', '兴奋', '优雅', '酷炫', '甜美', '其他'],
+    default: null
   },
-  // 可选描述
+  // 风格偏好
+  style_preference: {
+    type: String,
+    enum: ['简约', '复古', '潮流', '经典', '个性', '甜美', '帅气', '优雅', '其他'],
+    default: null
+  },
+  // 上装
+  top_garment: {
+    type: String,
+    default: ''
+  },
+  // 下装
+  bottom_garment: {
+    type: String,
+    default: ''
+  },
+  // 头饰
+  headwear: {
+    type: String,
+    default: ''
+  },
+  // 配饰
+  accessories: {
+    type: String,
+    default: ''
+  },
+  // 外套
+  outerwear: {
+    type: String,
+    default: ''
+  },
+  // 包袋
+  bag: {
+    type: String,
+    default: ''
+  },
+  // 鞋
+  shoes: {
+    type: String,
+    default: ''
+  },
+  // 其它服装
+  other_clothing: {
+    type: String,
+    default: ''
+  },
+  // 描述
   description: {
     type: String,
     default: '',
@@ -83,8 +169,8 @@ const modelPersonSchema = new mongoose.Schema({
 });
 
 // 复合索引：用于多条件筛选
-modelPersonSchema.index({ gender: 1, ageStage: 1, bodyFeature: 1 });
-modelPersonSchema.index({ personStyle: 1, status: 1 });
+modelPersonSchema.index({ user_id: 1, status: 1 });
+modelPersonSchema.index({ gender: 1, age_stage: 1, body_feature: 1 });
 
 // 更新时间戳
 modelPersonSchema.pre('save', function() {
@@ -92,4 +178,3 @@ modelPersonSchema.pre('save', function() {
 });
 
 module.exports = mongoose.model('ModelPerson', modelPersonSchema);
-

@@ -40,9 +40,11 @@ const {
 } = require('../controllers/userBindingController');
 
 const {
-  addModel,
-  getModels,
-  getFilterOptions
+  createOrUpdateUserModel,
+  getUserModel,
+  updateCurrentAvatar,
+  updateCurrentTryonImage,
+  deleteModelImage
 } = require('../controllers/modelPersonController');
 
 // ==================== 用户路由 ====================
@@ -90,10 +92,12 @@ router.get('/binding/favorites', authMiddleware, getFavoriteClothes);      // �
 
 // ==================== 模特管理路由 ====================
 
-// 模特相关接口（需要认证）
-router.post('/models/add', authMiddleware, addModel);                      // 添加模特
-router.get('/models', getModels);                          // 获取模特列表（支持分类筛选）
-router.get('/models/filter-options', authMiddleware, getFilterOptions);   // 获取筛选选项
+// 用户模特相关接口（需要认证，1:1关系）
+router.post('/models/create', authMiddleware, createOrUpdateUserModel);   // 创建或更新用户模特（上传图片）
+router.get('/models/my', authMiddleware, getUserModel);                  // 获取用户自己的模特
+router.put('/models/current-avatar', authMiddleware, updateCurrentAvatar); // 更新当前头像
+router.put('/models/current-tryon', authMiddleware, updateCurrentTryonImage); // 更新当前试穿效果图
+router.delete('/models/image', authMiddleware, deleteModelImage);        // 删除模特图片
 
 // ==================== 健康检查 ====================
 router.get('/health', (req, res) => {

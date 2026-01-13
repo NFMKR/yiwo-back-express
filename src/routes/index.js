@@ -3,6 +3,7 @@ const router = express.Router();
 
 // 中间件
 const authMiddleware = require('../middlewares/authMiddleware');
+const { uploadSingle, handleUploadError } = require('../middlewares/uploadMiddleware');
 
 // 控制器
 const { 
@@ -22,7 +23,11 @@ const {
 } = require('../controllers/wearController');
 
 const {
-  createShop
+  createShop,
+  updateShop,
+  getUserShops,
+  deleteShop,
+  getShopInfo
 } = require('../controllers/shopController');
 
 const {
@@ -47,6 +52,10 @@ const {
   deleteModelImage
 } = require('../controllers/modelPersonController');
 
+const {
+  uploadFile
+} = require('../controllers/fileController');
+
 // ==================== 用户路由 ====================
 
 // 公开路由（不需要认证）
@@ -69,8 +78,12 @@ router.get('/wear/records', authMiddleware, getUserTryOnRecords);          // �
 
 // ==================== 商家店铺路由 ====================
 
-// 创建商家店铺（需要认证）
-router.post('/shop/create', authMiddleware, createShop);                   // 创建商家店铺
+// 店铺管理接口（需要认证）
+router.post('/shop/create', authMiddleware, createShop);                   // 创建店铺
+router.get('/shop/:shopId', authMiddleware, getShopInfo);                 // 获取指定店铺全部信息
+router.put('/shop/:shopId', authMiddleware, updateShop);                  // 更新店铺信息
+router.get('/shop/my', authMiddleware, getUserShops);                     // 获取用户全部店铺
+router.delete('/shop/:shopId', authMiddleware, deleteShop);               // 删除店铺
 
 // ==================== 衣服管理路由 ====================
 
@@ -98,6 +111,11 @@ router.get('/models/my', authMiddleware, getUserModel);                  // 获�
 router.put('/models/current-avatar', authMiddleware, updateCurrentAvatar); // 更新当前头像
 router.put('/models/current-tryon', authMiddleware, updateCurrentTryonImage); // 更新当前试穿效果图
 router.delete('/models/image', authMiddleware, deleteModelImage);        // 删除模特图片
+
+// ==================== 文件上传路由 ====================
+
+// 单文件上传接口（需要认证，Bearer Token）
+router.post('/upload', authMiddleware, uploadSingle('file'), handleUploadError, uploadFile);
 
 // ==================== 健康检查 ====================
 router.get('/health', (req, res) => {

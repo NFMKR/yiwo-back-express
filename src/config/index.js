@@ -20,6 +20,16 @@ module.exports = {
   // 微信小程序配置
   wechatAppId: process.env.WECHAT_APPID,
   wechatAppSecret: process.env.WECHAT_APPSECRET,
-  wechatApiUrl: 'https://api.weixin.qq.com'
+  wechatApiUrl: 'https://api.weixin.qq.com',
+  // 微信云存储配置
+  wechatCloudEnvId: process.env.VITE_WX_CLOUD_ENV_ID || process.env.WX_CLOUD_ENV_ID,
+  wechatCloudAppId: process.env.WX_CLOUD_APPID,
+  wechatCloudBucket: process.env.WX_CLOUD_BUCKET,
+  // 腾讯云COS配置（用于后端上传）
+  tencentSecretId: process.env.TENCENT_SECRET_ID,
+  tencentSecretKey: process.env.TENCENT_SECRET_KEY,
+  tencentRegion: process.env.TENCENT_REGION || 'ap-shanghai',
+  tencentBucket: process.env.TENCENT_BUCKET,
+  tencentCdnDomain: process.env.TENCENT_CDN_DOMAIN
 };
 

@@ -3,4 +3,5 @@
 
 # 上传临时文件目录
 uploads/
+temp/
 *.tmp

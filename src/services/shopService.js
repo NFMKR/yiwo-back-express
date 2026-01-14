@@ -2,6 +2,8 @@
 
 const Shop = require('../models/shop/shopModel');
 const User = require('../models/user/userModel');
+const { generateUniqueShopId } = require('../utils/shopIdGenerator');
+const qrcodeService = require('./qrcodeService');
 
 // 创建商家店铺
 exports.createShop = async (userId, shopData) => {
@@ -16,27 +18,29 @@ exports.createShop = async (userId, shopData) => {
       wechatId 
     } = shopData;
 
-    // 验证必填字段
-    if (!shopId || !shopName || !avatarUrl || !qrcodeUrl || !wechatId) {
-      throw new Error('请提供完整的店铺信息（店铺ID、店铺名称、头像URL、二维码URL、微信号）');
+    // 如果没有提供shopId，自动生成一个6位不重复的ID
+    let finalShopId = shopId;
+    if (!finalShopId) {
+      finalShopId = await generateUniqueShopId();
+    } else {
+      // 如果提供了shopId，检查是否已存在
+      const existingShop = await Shop.findOne({ shopId: finalShopId });
+      if (existingShop) {
+        throw new Error('店铺ID已存在');
+      }
     }
 
-    // 检查店铺ID是否已存在
-    const existingShop = await Shop.findOne({ shopId });
-    if (existingShop) {
-      throw new Error('店铺ID已存在');
-    }
-
+    // 所有字段都是可选的，提供默认值
     // 创建新店铺
     const shop = new Shop({
       user_id: userId,
-      shopId,
-      shopName,
-      avatarUrl,
-      qrcodeUrl,
+      shopId: finalShopId, // 使用自动生成或用户提供的shopId
+      shopName: shopName || '未命名店铺',
+      avatarUrl: avatarUrl || '',
+      qrcodeUrl: qrcodeUrl || '',
       background_image_url: background_image_url || '',
       memberLevel: memberLevel || '普通会员',
-      wechatId
+      wechatId: wechatId || ''
     });
 
     await shop.save();
@@ -81,10 +85,18 @@ exports.createShop = async (userId, shopData) => {
 };
 
 // 更新店铺信息
-exports.updateShop = async (userId, shopId, updateData) => {
+exports.updateShop = async (userId, shopIdOrShopIdValue, updateData) => {
   try {
-    // 查找店铺（确保是用户的店铺）
-    const shop = await Shop.findOne({ _id: shopId, user_id: userId });
+    // 支持MongoDB _id或shopId字符串
+    let shop;
+    if (shopIdOrShopIdValue.match(/^[0-9a-fA-F]{24}$/)) {
+      // 是MongoDB ObjectId
+      shop = await Shop.findOne({ _id: shopIdOrShopIdValue, user_id: userId });
+    } else {
+      // 是shopId字符串
+      shop = await Shop.findOne({ shopId: shopIdOrShopIdValue, user_id: userId });
+    }
+    
     if (!shop) {
       throw new Error('店铺不存在或无权限修改');
     }

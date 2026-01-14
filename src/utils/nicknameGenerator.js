@@ -42,9 +42,9 @@ exports.generateRandomNickname = () => {
  */
 exports.getRandomDefaultAvatar = () => {
   const defaultAvatars = [
-    'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/personavatar2.png?sign=2de0c270e27e8aaeb521a358c0c7c035&t=1768365663',
-    'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/personavatar3.png?sign=74c70e6446d7dfe6009535c4ca64df40&t=1768365680g',
-    'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/personavatar4.png?sign=13c106fb9f643e36c3689c6015205603&t=1768365703'
+    'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/personavatar2.png',
+    'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/personavatar3.png',
+    'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/personavatar4.png'
   ];
   
   // 随机选择一个头像

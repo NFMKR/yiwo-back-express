@@ -27,12 +27,16 @@ const {
   updateShop,
   getUserShops,
   deleteShop,
-  getShopInfo
+  getShopInfo,
+  generateShopQRCode
 } = require('../controllers/shopController');
 
 const {
   createClothes,
-  getClothesByShopId
+  getClothesByShopId,
+  getClothesById,
+  updateClothes,
+  deleteClothes
 } = require('../controllers/clothesController');
 
 const {
@@ -84,12 +88,16 @@ router.get('/shop/my', authMiddleware, getUserShops);                     // 获
 router.get('/shop/:shopId', authMiddleware, getShopInfo);                 // 获取指定店铺全部信息
 router.put('/shop/:shopId', authMiddleware, updateShop);                  // 更新店铺信息
 router.delete('/shop/:shopId', authMiddleware, deleteShop);               // 删除店铺
+router.post('/shop/:shopId/qrcode', authMiddleware, generateShopQRCode);   // 生成店铺小程序二维码并上传
 
 // ==================== 衣服管理路由 ====================
 
 // 衣服相关接口（需要认证）
 router.post('/clothes/create', authMiddleware, createClothes);             // 创建衣服
-router.get('/clothes/shop/:shopId', authMiddleware, getClothesByShopId);   // 获取指定店铺的所有衣服
+router.get('/clothes/shop/:shopId', authMiddleware, getClothesByShopId);   // 获取指定店铺的所有衣服（需要放在具体路由之前）
+router.get('/clothes/:id', authMiddleware, getClothesById);                // 根据_id获取指定衣服详细信息
+router.put('/clothes/:id', authMiddleware, updateClothes);                 // 根据_id修改指定衣服信息
+router.delete('/clothes/:id', authMiddleware, deleteClothes);               // 根据_id删除指定衣服
 
 // ==================== 用户绑定路由 ====================
 

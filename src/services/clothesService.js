@@ -14,7 +14,8 @@ exports.createClothes = async (clothesData) => {
       imageUrl,
       price,
       status,
-      description
+      description,
+      shop_qr_image_url
     } = clothesData;
 
     // 检查店铺是否存在
@@ -39,7 +40,8 @@ exports.createClothes = async (clothesData) => {
       imageUrl,
       price,
       status: status || '上架',
-      description: description || ''
+      description: description || '',
+      shop_qr_image_url: shop_qr_image_url || ''
     });
 
     await clothes.save();
@@ -56,6 +58,7 @@ exports.createClothes = async (clothesData) => {
         price: clothes.price,
         status: clothes.status,
         description: clothes.description,
+        shop_qr_image_url: clothes.shop_qr_image_url,
         createdAt: clothes.createdAt
       }
     };
@@ -109,6 +112,140 @@ exports.getClothesByShopId = async (shopId, options = {}) => {
       }
     };
   } catch (error) {
+    throw error;
+  }
+};
+
+// 根据_id获取指定衣服详细信息
+exports.getClothesById = async (clothesId) => {
+  try {
+    // 使用MongoDB的_id查找
+    const clothes = await Clothes.findById(clothesId).select('-__v');
+    
+    if (!clothes) {
+      throw new Error('衣服不存在');
+    }
+
+    return {
+      clothes: {
+        id: clothes._id,
+        clothesId: clothes.clothesId,
+        shopId: clothes.shopId,
+        shopName: clothes.shopName,
+        clothesName: clothes.clothesName,
+        positionType: clothes.positionType,
+        imageUrl: clothes.imageUrl,
+        price: clothes.price,
+        status: clothes.status,
+        description: clothes.description,
+        shop_qr_image_url: clothes.shop_qr_image_url,
+        createdAt: clothes.createdAt,
+        updatedAt: clothes.updatedAt
+      }
+    };
+  } catch (error) {
+    // 处理MongoDB ObjectId格式错误
+    if (error.name === 'CastError') {
+      throw new Error('无效的衣服ID格式');
+    }
+    throw error;
+  }
+};
+
+// 根据_id修改指定衣服信息（全部字段可修改）
+exports.updateClothes = async (clothesId, updateData) => {
+  try {
+    // 查找衣服
+    const clothes = await Clothes.findById(clothesId);
+    
+    if (!clothes) {
+      throw new Error('衣服不存在');
+    }
+
+    // 如果更新了shopId，需要同步更新shopName
+    if (updateData.shopId && updateData.shopId !== clothes.shopId) {
+      const shop = await Shop.findOne({ shopId: updateData.shopId });
+      if (!shop) {
+        throw new Error('新店铺不存在');
+      }
+      clothes.shopId = updateData.shopId;
+      clothes.shopName = shop.shopName;
+    }
+
+    // 更新所有可修改的字段
+    const allowedFields = [
+      'clothesId', 'clothesName', 'positionType', 'imageUrl', 
+      'price', 'status', 'description', 'shop_qr_image_url'
+    ];
+
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        // 特殊处理价格验证
+        if (field === 'price' && updateData[field] < 0) {
+          throw new Error('价格不能为负数');
+        }
+        clothes[field] = updateData[field];
+      }
+    });
+
+    // 保存更新
+    await clothes.save();
+
+    return {
+      clothes: {
+        id: clothes._id,
+        clothesId: clothes.clothesId,
+        shopId: clothes.shopId,
+        shopName: clothes.shopName,
+        clothesName: clothes.clothesName,
+        positionType: clothes.positionType,
+        imageUrl: clothes.imageUrl,
+        price: clothes.price,
+        status: clothes.status,
+        description: clothes.description,
+        shop_qr_image_url: clothes.shop_qr_image_url,
+        createdAt: clothes.createdAt,
+        updatedAt: clothes.updatedAt
+      }
+    };
+  } catch (error) {
+    // 处理MongoDB ObjectId格式错误
+    if (error.name === 'CastError') {
+      throw new Error('无效的衣服ID格式');
+    }
+    throw error;
+  }
+};
+
+// 根据_id删除指定衣服
+exports.deleteClothes = async (clothesId) => {
+  try {
+    // 查找衣服
+    const clothes = await Clothes.findById(clothesId);
+    
+    if (!clothes) {
+      throw new Error('衣服不存在');
+    }
+
+    // 保存删除前的信息用于返回
+    const deletedClothes = {
+      id: clothes._id,
+      clothesId: clothes.clothesId,
+      clothesName: clothes.clothesName
+    };
+
+    // 删除衣服
+    await Clothes.findByIdAndDelete(clothesId);
+
+    return {
+      message: '衣服删除成功',
+      clothes: deletedClothes
+    };
+  } catch (error) {
+    // 处理MongoDB ObjectId格式错误
+    if (error.name === 'CastError') {
+      throw new Error('无效的衣服ID格式');
+    }
     throw error;
   }
 };

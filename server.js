@@ -16,7 +16,25 @@ connectDB();
 app.use(morgan('dev'));  // HTTP 请求日志
 app.use(cors());         // 跨域
 app.use(helmet());       // 安全头部
-app.use(bodyParser.json()); // 解析 JSON 请求体
+
+// JSON解析中间件，添加错误处理
+app.use(bodyParser.json({
+  limit: '10mb',
+  strict: true // 严格模式，只接受数组和对象
+}));
+
+// JSON解析错误处理中间件
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.error('JSON解析错误:', err.message);
+    return res.status(400).json({
+      success: false,
+      message: `JSON格式错误: ${err.message}。请确保：1. 使用双引号而不是单引号 2. 所有属性名都用双引号包裹 3. JSON格式正确`
+    });
+  }
+  next();
+});
+
 app.use(bodyParser.urlencoded({ extended: true })); // 解析 URL 编码请求体
 
 // 路由配置

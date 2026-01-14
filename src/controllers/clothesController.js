@@ -13,7 +13,8 @@ exports.createClothes = async (req, res) => {
       imageUrl,
       price,
       status,
-      description
+      description,
+      shop_qr_image_url
     } = req.body;
 
     // 验证必填字段
@@ -40,7 +41,8 @@ exports.createClothes = async (req, res) => {
       imageUrl,
       price,
       status,
-      description
+      description,
+      shop_qr_image_url
     });
 
     res.status(201).json({
@@ -86,6 +88,116 @@ exports.getClothesByShopId = async (req, res) => {
     res.status(400).json({
       success: false,
       message: error.message || '获取衣服列表失败'
+    });
+  }
+};
+
+// 根据_id获取指定衣服详细信息
+exports.getClothesById = async (req, res) => {
+  try {
+    const { id } = req.params; // 使用_id
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: '衣服ID不能为空'
+      });
+    }
+
+    const result = await clothesService.getClothesById(id);
+
+    res.status(200).json({
+      success: true,
+      message: '获取衣服信息成功',
+      data: result
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      message: error.message || '获取衣服信息失败'
+    });
+  }
+};
+
+// 根据_id修改指定衣服信息（全部字段可修改）
+exports.updateClothes = async (req, res) => {
+  try {
+    const { id } = req.params; // 使用_id
+    const {
+      clothesId,
+      shopId,
+      clothesName,
+      positionType,
+      imageUrl,
+      price,
+      status,
+      description,
+      shop_qr_image_url
+    } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: '衣服ID不能为空'
+      });
+    }
+
+    // 验证价格（如果提供了）
+    if (price !== undefined && price < 0) {
+      return res.status(400).json({
+        success: false,
+        message: '价格不能为负数'
+      });
+    }
+
+    const result = await clothesService.updateClothes(id, {
+      clothesId,
+      shopId,
+      clothesName,
+      positionType,
+      imageUrl,
+      price,
+      status,
+      description,
+      shop_qr_image_url
+    });
+
+    res.status(200).json({
+      success: true,
+      message: '衣服信息更新成功',
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || '更新衣服信息失败'
+    });
+  }
+};
+
+// 根据_id删除指定衣服
+exports.deleteClothes = async (req, res) => {
+  try {
+    const { id } = req.params; // 使用_id
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: '衣服ID不能为空'
+      });
+    }
+
+    const result = await clothesService.deleteClothes(id);
+
+    res.status(200).json({
+      success: true,
+      message: '衣服删除成功',
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || '删除衣服失败'
     });
   }
 };

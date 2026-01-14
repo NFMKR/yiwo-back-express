@@ -52,6 +52,10 @@ const clothesSchema = new mongoose.Schema({
     default: '',
     trim: true
   },
+  shop_qr_image_url: {
+    type: String,
+    default: ''
+  },
   createdAt: {
     type: Date,
     default: Date.now

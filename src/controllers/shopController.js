@@ -1,6 +1,7 @@
 // src/controllers/shopController.js
 
 const shopService = require('../services/shopService');
+const qrcodeService = require('../services/qrcodeService');
 
 // 创建商家店铺
 exports.createShop = async (req, res) => {
@@ -16,13 +17,7 @@ exports.createShop = async (req, res) => {
       wechatId 
     } = req.body;
 
-    // 验证必填字段
-    if (!shopId || !shopName || !avatarUrl || !qrcodeUrl || !wechatId) {
-      return res.status(400).json({
-        success: false,
-        message: '请提供完整的店铺信息（店铺ID、店铺名称、头像URL、二维码URL、微信号）'
-      });
-    }
+    // 所有字段都是可选的，shopId会自动生成，其他字段有默认值
 
     const result = await shopService.createShop(userId, {
       shopId,
@@ -51,13 +46,21 @@ exports.createShop = async (req, res) => {
 exports.updateShop = async (req, res) => {
   try {
     const userId = req.user.userId; // 从认证中间件获取
-    const { shopId } = req.params; // 店铺的_id（MongoDB ObjectId）
+    const { shopId } = req.params; // 可以是MongoDB _id或shopId字符串
     const updateData = req.body;
 
     if (!shopId) {
       return res.status(400).json({
         success: false,
         message: '店铺ID不能为空'
+      });
+    }
+
+    // 验证请求体是否为有效的JSON对象
+    if (!updateData || typeof updateData !== 'object' || Array.isArray(updateData)) {
+      return res.status(400).json({
+        success: false,
+        message: '请求体必须是有效的JSON对象'
       });
     }
 
@@ -69,6 +72,7 @@ exports.updateShop = async (req, res) => {
       data: result
     });
   } catch (error) {
+    console.error('更新店铺信息失败:', error);
     res.status(400).json({
       success: false,
       message: error.message || '更新店铺信息失败'
@@ -148,6 +152,50 @@ exports.getShopInfo = async (req, res) => {
     res.status(404).json({
       success: false,
       message: error.message || '获取店铺信息失败'
+    });
+  }
+};
+
+// 生成店铺小程序二维码并上传到云存储
+exports.generateShopQRCode = async (req, res) => {
+  try {
+    const { shopId } = req.params; // 可以是MongoDB _id或shopId字符串
+    const { page, width } = req.query;
+
+    if (!shopId) {
+      return res.status(400).json({
+        success: false,
+        message: '店铺ID不能为空'
+      });
+    }
+
+    // 获取店铺信息（支持MongoDB _id或shopId字符串）
+    const shopInfo = await shopService.getShopInfo(shopId);
+    if (!shopInfo || !shopInfo.shop) {
+      return res.status(404).json({
+        success: false,
+        message: '店铺不存在'
+      });
+    }
+
+    const shop = shopInfo.shop;
+
+    // 生成并上传二维码
+    const result = await qrcodeService.generateAndUploadQRCode(shop.shopId, {
+      page: page || 'pages/index/index',
+      width: width ? parseInt(width) : 430
+    });
+
+    res.status(200).json({
+      success: true,
+      message: '二维码生成并上传成功',
+      data: result
+    });
+  } catch (error) {
+    console.error('生成二维码失败:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || '生成二维码失败'
     });
   }
 };

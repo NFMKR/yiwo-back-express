@@ -18,16 +18,16 @@ const shopSchema = new mongoose.Schema({
   },
   shopName: {
     type: String,
-    required: true,
+    default: '未命名店铺',
     trim: true
   },
   avatarUrl: {
     type: String,
-    required: true
+    default: ''
   },
   qrcodeUrl: {
     type: String,
-    required: true
+    default: ''
   },
   // 店铺背景图URL
   background_image_url: {
@@ -36,13 +36,12 @@ const shopSchema = new mongoose.Schema({
   },
   memberLevel: {
     type: String,
-    required: true,
     enum: ['普通会员', 'VIP会员', '黄金会员', '钻石会员'],
     default: '普通会员'
   },
   wechatId: {
     type: String,
-    required: true,
+    default: '',
     trim: true
   },
   createdAt: {

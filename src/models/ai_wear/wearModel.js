@@ -73,6 +73,16 @@ const wearSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // 使用的模型
+  model: {
+    type: String,
+    default: null
+  },
+  // 提示词
+  prompt: {
+    type: String,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

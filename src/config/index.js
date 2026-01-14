@@ -30,6 +30,10 @@ module.exports = {
   tencentSecretKey: process.env.TENCENT_SECRET_KEY,
   tencentRegion: process.env.TENCENT_REGION || 'ap-shanghai',
   tencentBucket: process.env.TENCENT_BUCKET,
-  tencentCdnDomain: process.env.TENCENT_CDN_DOMAIN
+  tencentCdnDomain: process.env.TENCENT_CDN_DOMAIN,
+  // 豆包API配置
+  arkApiKey: process.env.ARK_API_KEY,
+  arkApiUrl: process.env.ARK_API_URL || 'https://ark.cn-beijing.volces.com/api/v3',
+  arkModel: process.env.ARK_MODEL || 'doubao-seedream-4-5-251128' // 模型名称，默认使用图生图模型
 };
 

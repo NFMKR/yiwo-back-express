@@ -2,47 +2,33 @@
 
 const wearService = require('../services/wearService');
 
-// 创建AI试穿任务
+// 创建AI试穿任务（使用豆包4.5模型）
 exports.createTryOnTask = async (req, res) => {
   try {
     const userId = req.user.userId; // 从认证中间件获取
     const {
-      person_image_url,
-      top_garment_url,
-      bottom_garment_url,
-      resolution,
-      restore_face
+      model, // 模型，可选，默认doubao-seedream-4.5
+      size, // 图片尺寸，可选
+      watermark, // 是否添加水印，可选，默认true
+      response_format // 返回格式，可选，默认url
     } = req.body;
 
-    // 验证必填字段
-    if (!person_image_url) {
-      return res.status(400).json({
-        success: false,
-        message: '模特图片URL不能为空'
-      });
-    }
-
-    if (!top_garment_url && !bottom_garment_url) {
-      return res.status(400).json({
-        success: false,
-        message: '上装或下装至少需要提供一个'
-      });
-    }
+    // 衣服URL会自动从模特的衣服字段中获取，不需要从请求体传入
 
     const result = await wearService.createTryOnTask(userId, {
-      person_image_url,
-      top_garment_url,
-      bottom_garment_url,
-      resolution,
-      restore_face
+      model,
+      size,
+      watermark,
+      response_format
     });
 
     res.status(201).json({
       success: true,
-      message: '试穿任务创建成功',
+      message: '试穿图片生成成功',
       data: result
     });
   } catch (error) {
+    console.error('创建试穿任务失败:', error);
     res.status(400).json({
       success: false,
       message: error.message || '创建试穿任务失败'

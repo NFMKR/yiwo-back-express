@@ -2,97 +2,268 @@
 
 const axios = require('axios');
 const Wear = require('../models/ai_wear/wearModel');
-const { dashscopeApiKey, dashscopeApiUrl } = require('../config');
+const ModelPerson = require('../models/model/modelPersonModel');
+const { arkApiKey, arkApiUrl, arkModel } = require('../config');
 
-// 创建AI试穿任务
+// 构建穿搭提示词
+const buildOutfitPrompt = (modelInfo, clothesUrls = []) => {
+  let prompt = '生成一张高质量的穿搭效果图，';
+  
+  // 模特基本信息
+  if (modelInfo.gender) {
+    prompt += `模特是${modelInfo.gender}性，`;
+  }
+  if (modelInfo.age_stage) {
+    prompt += `${modelInfo.age_stage}年龄段，`;
+  }
+  if (modelInfo.height) {
+    prompt += `身高${modelInfo.height}cm，`;
+  }
+  if (modelInfo.weight) {
+    prompt += `体重${modelInfo.weight}kg，`;
+  }
+  if (modelInfo.body_feature) {
+    prompt += `${modelInfo.body_feature}体型，`;
+  }
+  
+  // 风格偏好
+  if (modelInfo.style_preference) {
+    prompt += `风格偏好：${modelInfo.style_preference}，`;
+  }
+  if (modelInfo.shooting_style) {
+    prompt += `拍摄风格：${modelInfo.shooting_style}，`;
+  }
+  if (modelInfo.mood) {
+    prompt += `情绪氛围：${modelInfo.mood}，`;
+  }
+  
+  // 衣服描述
+  if (clothesUrls.length > 0) {
+    prompt += `参考提供的${clothesUrls.length}张衣服图片进行穿搭，`;
+  }
+  
+  // 场景描述
+  if (modelInfo.suitable_weather) {
+    prompt += `适合${modelInfo.suitable_weather}季节穿着，`;
+  }
+  
+  // 最终要求
+  prompt += '要求：人物自然站立，全身清晰可见，服装搭配协调美观，背景简洁，光线自然，细节精致，专业摄影品质。';
+  
+  return prompt;
+};
+
+// 创建AI试穿任务（使用豆包4.5模型）
 exports.createTryOnTask = async (userId, taskData) => {
   try {
     const { 
-      person_image_url, 
-      top_garment_url, 
-      bottom_garment_url,
-      resolution = -1,
-      restore_face = true
+      model = arkModel, // 模型，从配置中获取，如果没有则使用默认值
+      size, // 图片尺寸，可选
+      watermark = true, // 是否添加水印，默认true
+      response_format = 'url' // 返回格式，默认url
     } = taskData;
 
-    // 验证必填字段
-    if (!person_image_url) {
-      throw new Error('模特图片URL不能为空');
+    // 获取用户的模特信息
+    const modelPerson = await ModelPerson.findOne({ user_id: userId, status: '启用' });
+    if (!modelPerson) {
+      throw new Error('未找到用户的模特信息，请先创建模特');
     }
 
-    if (!top_garment_url && !bottom_garment_url) {
-      throw new Error('上装或下装至少需要提供一个');
+    // 验证URL格式的正则表达式
+    const urlPattern = /^https?:\/\/.+/i;
+
+    // 获取模特的全身图片
+    let personImageUrl = modelPerson.current_avatar_url;
+    if (!personImageUrl && modelPerson.avatar_images && modelPerson.avatar_images.length > 0) {
+      // 如果没有当前头像，使用第一张全身图
+      personImageUrl = modelPerson.avatar_images[0].full_body_image_url;
     }
+    
+    if (!personImageUrl) {
+      throw new Error('模特的全身图片不能为空，请先上传模特图片');
+    }
+
+    // 验证模特图片URL格式
+    if (!urlPattern.test(personImageUrl)) {
+      throw new Error(`模特的全身图片URL格式无效: ${personImageUrl}。请确保是有效的HTTP/HTTPS链接`);
+    }
+
+    // 从模特信息中自动获取衣服URL（收集所有非空的衣服字段）
+    const clothesUrls = [];
+    const clothesFields = [
+      modelPerson.top_garment,      // 上装
+      modelPerson.bottom_garment,   // 下装
+      modelPerson.outerwear,         // 外套
+      modelPerson.headwear,         // 头饰
+      modelPerson.shoes,            // 鞋
+      modelPerson.bag,              // 包袋
+      modelPerson.accessories,      // 配饰
+      modelPerson.other_clothing    // 其它服装
+    ];
+
+    // 收集所有非空的衣服URL，并验证URL格式
+    clothesFields.forEach(url => {
+      if (url && url.trim() !== '') {
+        const trimmedUrl = url.trim();
+        // 只添加有效的URL（以http://或https://开头）
+        if (urlPattern.test(trimmedUrl)) {
+          clothesUrls.push(trimmedUrl);
+        } else {
+          console.warn('跳过无效的衣服URL（不是有效的HTTP/HTTPS链接）:', trimmedUrl);
+        }
+      }
+    });
+
+    // 验证衣服URL数量
+    if (clothesUrls.length === 0) {
+      throw new Error('模特的衣服信息为空，请先设置模特的衣服URL');
+    }
+
+    if (clothesUrls.length > 14) {
+      throw new Error('模特的衣服数量过多，最多支持14张参考图片');
+    }
+
+    // 构建提示词
+    const prompt = buildOutfitPrompt(modelPerson, clothesUrls);
+
+    // 构建图片数组（第一张是模特图片，后面是衣服图片）
+    // 豆包4.5支持多图输入，第一张作为主体（模特），后续作为参考（衣服）
+    const imageArray = [personImageUrl, ...clothesUrls];
+    
+    console.log('图片数组:', {
+      personImage: personImageUrl,
+      clothesCount: clothesUrls.length,
+      clothesUrls: clothesUrls,
+      totalImages: imageArray.length
+    });
 
     // 构建请求数据
     const requestData = {
-      model: 'aitryon',
-      input: {
-        person_image_url
-      },
-      parameters: {
-        resolution,
-        restore_face
-      }
+      model: model,
+      prompt: prompt,
+      image: imageArray,
+      sequential_image_generation: 'disabled', // 单图模式
+      watermark: watermark,
+      response_format: response_format
     };
 
-    // 添加服饰图片URL
-    if (top_garment_url) {
-      requestData.input.top_garment_url = top_garment_url;
-    }
-    if (bottom_garment_url) {
-      requestData.input.bottom_garment_url = bottom_garment_url;
+    // 可选参数
+    if (size) {
+      requestData.size = size;
     }
 
-    // 调用阿里云DashScope API创建任务
-    const response = await axios.post(
-      `${dashscopeApiUrl}/services/aigc/image2image/image-synthesis`,
-      requestData,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${dashscopeApiKey}`,
-          'X-DashScope-Async': 'enable'
+    console.log('豆包API请求数据:', {
+      model: requestData.model,
+      promptLength: prompt.length,
+      imageCount: imageArray.length,
+      size: requestData.size
+    });
+
+    // 调用豆包API
+    // 火山引擎的API key格式：可能是 Bearer {key} 或者直接 {key}
+    // 根据错误信息，尝试不同的格式
+    let authHeader;
+    if (arkApiKey.startsWith('Bearer ')) {
+      authHeader = arkApiKey;
+    } else {
+      // 尝试直接使用，或者添加Bearer前缀
+      authHeader = `Bearer ${arkApiKey}`;
+    }
+    
+    console.log('API Key格式检查:', {
+      keyLength: arkApiKey?.length,
+      keyPrefix: arkApiKey?.substring(0, 10),
+      authHeader: authHeader.substring(0, 20) + '...',
+      model: model
+    });
+
+    let response;
+    try {
+      response = await axios.post(
+        `${arkApiUrl}/images/generations`,
+        requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
+          }
         }
+      );
+    } catch (error) {
+      // 处理请求错误
+      if (error.response) {
+        const errorData = error.response.data;
+        const errorMsg = errorData?.error?.message || errorData?.message || `HTTP ${error.response.status}`;
+        throw new Error(`豆包API请求失败: ${errorMsg}。请检查：1. 模型名称是否正确（当前使用: ${model}，可在.env中设置ARK_MODEL）2. API Key是否正确 3. 是否需要在火山引擎控制台创建Endpoint`);
       }
-    );
+      throw error;
+    }
 
     // 检查响应
-    if (!response.data || !response.data.output) {
+    if (!response.data) {
       throw new Error('API响应数据异常');
     }
 
-    const { task_id, task_status } = response.data.output;
-    const { request_id } = response.data;
+    // 处理错误响应
+    if (response.data.error) {
+      const errorMsg = response.data.error.message || response.data.error.code || 'API请求失败';
+      throw new Error(`豆包API错误: ${errorMsg}。请检查：1. 模型名称是否正确（当前使用: ${model}）2. API Key是否有访问该模型的权限 3. 是否需要在火山引擎控制台配置Endpoint ID`);
+    }
+
+    // 获取生成的图片
+    if (!response.data.data || response.data.data.length === 0) {
+      throw new Error('未生成图片');
+    }
+
+    // 取第一张生成的图片
+    const generatedImage = response.data.data[0];
+    const imageUrl = generatedImage.url || generatedImage.b64_json;
+
+    if (!imageUrl) {
+      throw new Error('生成的图片URL为空');
+    }
+
+    console.log('生成成功:', {
+      imageUrl: imageUrl,
+      size: generatedImage.size,
+      model: response.data.model,
+      created: response.data.created
+    });
 
     // 保存任务到数据库
     const wearTask = new Wear({
       userId,
-      taskId: task_id,
-      personImageUrl: person_image_url,
-      topGarmentUrl: top_garment_url || null,
-      bottomGarmentUrl: bottom_garment_url || null,
-      resolution,
-      restoreFace: restore_face,
-      taskStatus: task_status,
-      requestId: request_id,
-      submitTime: new Date().toISOString()
+      taskId: response.data.created?.toString() || Date.now().toString(), // 使用创建时间戳作为任务ID
+      personImageUrl: personImageUrl,
+      topGarmentUrl: clothesUrls[0] || null, // 第一张衣服图片作为上装
+      bottomGarmentUrl: clothesUrls[1] || null, // 第二张衣服图片作为下装
+      taskStatus: 'SUCCEEDED', // 豆包API是同步返回，直接成功
+      imageUrl: imageUrl, // 生成的图片URL
+      requestId: response.data.created?.toString() || null,
+      submitTime: new Date().toISOString(),
+      endTime: new Date().toISOString(),
+      model: model, // 保存使用的模型
+      prompt: prompt // 保存提示词
     });
 
     await wearTask.save();
 
     return {
-      taskId: task_id,
-      taskStatus: task_status,
-      requestId: request_id,
-      message: '任务创建成功'
+      taskId: wearTask.taskId,
+      taskStatus: 'SUCCEEDED',
+      imageUrl: imageUrl,
+      model: response.data.model,
+      created: response.data.created,
+      usage: response.data.usage,
+      message: '试穿图片生成成功'
     };
   } catch (error) {
     // 处理API错误
     if (error.response) {
+      const errorData = error.response.data;
       throw new Error(
-        error.response.data?.message || 
-        error.response.data?.error || 
+        errorData?.error?.message || 
+        errorData?.message || 
         `API请求失败: ${error.response.status}`
       );
     }
@@ -100,7 +271,7 @@ exports.createTryOnTask = async (userId, taskData) => {
   }
 };
 
-// 查询试穿任务结果
+// 查询试穿任务结果（豆包API是同步的，直接从数据库查询）
 exports.getTaskResult = async (userId, taskId) => {
   try {
     // 从数据库查找任务
@@ -109,107 +280,17 @@ exports.getTaskResult = async (userId, taskId) => {
       throw new Error('任务不存在或无权访问');
     }
 
-    // 如果任务已经成功完成，直接返回数据库中的结果
-    if (wearTask.taskStatus === 'SUCCEEDED' && wearTask.imageUrl) {
-      return {
-        taskId: wearTask.taskId,
-        taskStatus: wearTask.taskStatus,
-        imageUrl: wearTask.imageUrl,
-        submitTime: wearTask.submitTime,
-        scheduledTime: wearTask.scheduledTime,
-        endTime: wearTask.endTime,
-        requestId: wearTask.requestId
-      };
-    }
-
-    // 如果任务失败，返回错误信息
-    if (wearTask.taskStatus === 'FAILED') {
-      return {
-        taskId: wearTask.taskId,
-        taskStatus: wearTask.taskStatus,
-        errorCode: wearTask.errorCode,
-        errorMessage: wearTask.errorMessage,
-        requestId: wearTask.requestId
-      };
-    }
-
-    // 否则从API查询最新状态
-    const response = await axios.get(
-      `${dashscopeApiUrl}/tasks/${taskId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${dashscopeApiKey}`
-        }
-      }
-    );
-
-    if (!response.data || !response.data.output) {
-      throw new Error('API响应数据异常');
-    }
-
-    const { output, request_id, usage } = response.data;
-
-    // 更新数据库中的任务状态
-    wearTask.taskStatus = output.task_status;
-    wearTask.requestId = request_id;
-    
-    if (output.submit_time) {
-      wearTask.submitTime = output.submit_time;
-    }
-    if (output.scheduled_time) {
-      wearTask.scheduledTime = output.scheduled_time;
-    }
-    if (output.end_time) {
-      wearTask.endTime = output.end_time;
-    }
-
-    // 如果任务成功，保存图片URL
-    if (output.task_status === 'SUCCEEDED' && output.image_url) {
-      wearTask.imageUrl = output.image_url;
-    }
-
-    // 如果任务失败，保存错误信息
-    if (output.task_status === 'FAILED') {
-      wearTask.errorCode = output.code || null;
-      wearTask.errorMessage = output.message || null;
-    }
-
-    await wearTask.save();
-
-    // 构建返回数据
-    const result = {
-      taskId: output.task_id,
-      taskStatus: output.task_status,
-      submitTime: output.submit_time,
-      scheduledTime: output.scheduled_time,
-      endTime: output.end_time,
-      requestId: request_id
+    return {
+      taskId: wearTask.taskId,
+      taskStatus: wearTask.taskStatus,
+      imageUrl: wearTask.imageUrl,
+      submitTime: wearTask.submitTime,
+      endTime: wearTask.endTime,
+      requestId: wearTask.requestId,
+      model: wearTask.model,
+      prompt: wearTask.prompt
     };
-
-    if (output.image_url) {
-      result.imageUrl = output.image_url;
-      result.message = '任务已完成，图片URL有效期为24小时，请及时下载';
-    }
-
-    if (output.task_status === 'FAILED') {
-      result.errorCode = output.code;
-      result.errorMessage = output.message;
-    }
-
-    if (usage) {
-      result.usage = usage;
-    }
-
-    return result;
   } catch (error) {
-    // 处理API错误
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || 
-        error.response.data?.error || 
-        `API请求失败: ${error.response.status}`
-      );
-    }
     throw error;
   }
 };
@@ -289,4 +370,3 @@ exports.getUserTryOnRecords = async (userId, options = {}) => {
     throw error;
   }
 };
-

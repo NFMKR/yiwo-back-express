@@ -80,9 +80,9 @@ router.get('/wear/records', authMiddleware, getUserTryOnRecords);          // �
 
 // 店铺管理接口（需要认证）
 router.post('/shop/create', authMiddleware, createShop);                   // 创建店铺
+router.get('/shop/my', authMiddleware, getUserShops);                     // 获取用户全部店铺（需要放在具体路由之前）
 router.get('/shop/:shopId', authMiddleware, getShopInfo);                 // 获取指定店铺全部信息
 router.put('/shop/:shopId', authMiddleware, updateShop);                  // 更新店铺信息
-router.get('/shop/my', authMiddleware, getUserShops);                     // 获取用户全部店铺
 router.delete('/shop/:shopId', authMiddleware, deleteShop);               // 删除店铺
 
 // ==================== 衣服管理路由 ====================

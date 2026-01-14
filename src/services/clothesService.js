@@ -2,21 +2,26 @@
 
 const Clothes = require('../models/clothes/clothesModel');
 const Shop = require('../models/shop/shopModel');
+const { generateUniqueClothesId } = require('../utils/clothesIdGenerator');
 
 // 创建衣服
 exports.createClothes = async (clothesData) => {
   try {
     const {
-      clothesId,
       shopId,
-      clothesName,
       positionType,
       imageUrl,
+      clothesName,
       price,
       status,
       description,
       shop_qr_image_url
     } = clothesData;
+
+    // 验证必填字段
+    if (!shopId || !positionType || !imageUrl) {
+      throw new Error('请提供店铺ID、部位类型和图片URL');
+    }
 
     // 检查店铺是否存在
     const shop = await Shop.findOne({ shopId });
@@ -24,21 +29,27 @@ exports.createClothes = async (clothesData) => {
       throw new Error('店铺不存在');
     }
 
-    // 检查衣服ID是否已存在
-    const existingClothes = await Clothes.findOne({ clothesId });
-    if (existingClothes) {
-      throw new Error('衣服ID已存在');
+    // 如果没有提供clothesId，自动生成一个（格式：shopId-6位随机数字）
+    let finalClothesId = clothesData.clothesId;
+    if (!finalClothesId) {
+      finalClothesId = await generateUniqueClothesId(shopId);
+    } else {
+      // 如果提供了clothesId，检查是否已存在
+      const existingClothes = await Clothes.findOne({ clothesId: finalClothesId });
+      if (existingClothes) {
+        throw new Error('衣服ID已存在');
+      }
     }
 
-    // 创建新衣服
+    // 创建新衣服（所有字段都有默认值）
     const clothes = new Clothes({
-      clothesId,
+      clothesId: finalClothesId,
       shopId,
       shopName: shop.shopName, // 从店铺信息中获取店铺名
-      clothesName,
+      clothesName: clothesName || '未命名衣服',
       positionType,
       imageUrl,
-      price,
+      price: price !== undefined ? price : 0,
       status: status || '上架',
       description: description || '',
       shop_qr_image_url: shop_qr_image_url || ''

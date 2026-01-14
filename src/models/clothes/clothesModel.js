@@ -17,18 +17,18 @@ const clothesSchema = new mongoose.Schema({
   },
   shopName: {
     type: String,
-    required: true,
+    default: '',
     trim: true
   },
   clothesName: {
     type: String,
-    required: true,
+    default: '未命名衣服',
     trim: true
   },
   positionType: {
     type: String,
     required: true,
-    enum: ['上装', '下装', '连衣裙', '外套', '裤子', '裙子', '其他'],
+    enum: ['上装', '下装', '头饰/帽', '外套', '裤子', '裙子', '包袋', '鞋', '其他'],
     index: true
   },
   imageUrl: {
@@ -37,12 +37,11 @@ const clothesSchema = new mongoose.Schema({
   },
   price: {
     type: Number,
-    required: true,
+    default: 0,
     min: 0
   },
   status: {
     type: String,
-    required: true,
     enum: ['上架', '下架', '售罄'],
     default: '上架',
     index: true

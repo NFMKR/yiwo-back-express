@@ -6,27 +6,27 @@ const clothesService = require('../services/clothesService');
 exports.createClothes = async (req, res) => {
   try {
     const {
-      clothesId,
       shopId,
-      clothesName,
       positionType,
       imageUrl,
+      clothesName,
       price,
       status,
       description,
-      shop_qr_image_url
+      shop_qr_image_url,
+      clothesId // 可选，不提供时自动生成
     } = req.body;
 
-    // 验证必填字段
-    if (!clothesId || !shopId || !clothesName || !positionType || !imageUrl || price === undefined) {
+    // 验证必填字段（只有shopId、positionType、imageUrl是必填的，clothesId会自动生成）
+    if (!shopId || !positionType || !imageUrl) {
       return res.status(400).json({
         success: false,
-        message: '请提供完整的衣服信息（衣服ID、店铺ID、衣服名称、部位类型、图片URL、价格）'
+        message: '请提供店铺ID、部位类型和图片URL。衣服ID会自动生成（格式：shopId-6位随机数字）'
       });
     }
 
-    // 验证价格
-    if (price < 0) {
+    // 验证价格（如果提供了）
+    if (price !== undefined && price < 0) {
       return res.status(400).json({
         success: false,
         message: '价格不能为负数'

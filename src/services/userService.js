@@ -4,6 +4,7 @@ const User = require('../models/user/userModel');
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config');
 const { getWeChatOpenId } = require('../utils/wechatApi');
+const { generateRandomNickname, getRandomDefaultAvatar } = require('../utils/nicknameGenerator');
 
 // 微信小程序登录/注册（一键登录）
 exports.wechatLogin = async (code, userInfo = {}) => {
@@ -25,12 +26,21 @@ exports.wechatLogin = async (code, userInfo = {}) => {
 
     if (!user) {
       // 新用户，自动注册
+      // 生成随机昵称（如果用户没有提供name或nickName）
+      const generatedName = userInfo.name || userInfo.nickName || generateRandomNickname();
+      
+      // 获取微信头像（如果用户提供了）
+      const wxAvatar = userInfo.avatarUrl || userInfo.wxAvatarUrl || '';
+      
+      // 随机选择默认头像（如果用户没有提供微信头像，使用随机默认头像）
+      const finalAvatarUrl = wxAvatar || getRandomDefaultAvatar();
+      
       user = new User({
         openid,
         wxName: userInfo.nickName || userInfo.wxName || '',
-        wxAvatarUrl: userInfo.avatarUrl || userInfo.wxAvatarUrl || '',
-        name: userInfo.name || userInfo.nickName || '',
-        avatarUrl: userInfo.avatarUrl || '',
+        wxAvatarUrl: wxAvatar, // 微信头像（如果有，否则为空）
+        name: generatedName, // 使用生成的随机昵称或用户提供的昵称
+        avatarUrl: finalAvatarUrl, // 优先使用微信头像，否则使用随机默认头像
         registeredShops: []
       });
     } else {

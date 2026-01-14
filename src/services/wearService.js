@@ -4,6 +4,8 @@ const axios = require('axios');
 const Wear = require('../models/ai_wear/wearModel');
 const ModelPerson = require('../models/model/modelPersonModel');
 const { arkApiKey, arkApiUrl, arkModel } = require('../config');
+const { generateDefaultModelData } = require('../utils/defaultModelData');
+const modelPersonService = require('./modelPersonService');
 
 // 构建穿搭提示词
 const buildOutfitPrompt = (modelInfo, clothesUrls = []) => {
@@ -64,9 +66,22 @@ exports.createTryOnTask = async (userId, taskData) => {
     } = taskData;
 
     // 获取用户的模特信息
-    const modelPerson = await ModelPerson.findOne({ user_id: userId, status: '启用' });
+    let modelPerson = await ModelPerson.findOne({ user_id: userId, status: '启用' });
+    
+    // 如果用户没有模特，自动创建一个带示例数据的模特
     if (!modelPerson) {
-      throw new Error('未找到用户的模特信息，请先创建模特');
+      console.log('用户未创建模特，自动创建示例模特...');
+      const defaultModelData = generateDefaultModelData();
+      
+      // 调用modelPersonService创建模特
+      const createResult = await modelPersonService.createOrUpdateUserModel(userId, defaultModelData);
+      modelPerson = await ModelPerson.findOne({ user_id: userId, status: '启用' });
+      
+      if (!modelPerson) {
+        throw new Error('自动创建模特失败，请稍后重试');
+      }
+      
+      console.log('自动创建模特成功，使用示例数据');
     }
 
     // 验证URL格式的正则表达式

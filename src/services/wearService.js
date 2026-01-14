@@ -160,10 +160,15 @@ exports.createTryOnTask = async (userId, taskData) => {
     });
 
     // 调用豆包API
+    // 验证API Key是否存在
+    if (!arkApiKey) {
+      throw new Error('豆包API Key未配置，请在.env文件中设置ARK_API_KEY');
+    }
+
     // 火山引擎的API key格式：可能是 Bearer {key} 或者直接 {key}
     // 根据错误信息，尝试不同的格式
     let authHeader;
-    if (arkApiKey.startsWith('Bearer ')) {
+    if (arkApiKey && typeof arkApiKey === 'string' && arkApiKey.startsWith('Bearer ')) {
       authHeader = arkApiKey;
     } else {
       // 尝试直接使用，或者添加Bearer前缀

@@ -1,9 +1,9 @@
 // src/services/wechatCloudStorageService.js
 
-const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
 const { wechatAppId, wechatAppSecret, wechatCloudEnvId } = require('../config');
+const { wechatAxiosInstance } = require('../utils/wechatApi'); // 使用微信专用axios实例（跳过SSL证书校验）
 
 // 获取微信云开发access_token
 let accessToken = null;
@@ -16,8 +16,8 @@ const getAccessToken = async () => {
       return accessToken;
     }
 
-    // 获取新的access_token
-    const response = await axios.get('https://api.weixin.qq.com/cgi-bin/token', {
+    // 获取新的access_token（使用微信专用axios实例，跳过SSL证书校验）
+    const response = await wechatAxiosInstance.get('https://api.weixin.qq.com/cgi-bin/token', {
       params: {
         grant_type: 'client_credential',
         appid: wechatAppId,
@@ -44,7 +44,8 @@ const getUploadInfo = async (cloudPath) => {
   try {
     const token = await getAccessToken();
     
-    const response = await axios.post(
+    // 使用微信专用axios实例（跳过SSL证书校验）
+    const response = await wechatAxiosInstance.post(
       `https://api.weixin.qq.com/tcb/uploadfile?access_token=${token}`,
       {
         env: wechatCloudEnvId,
@@ -70,7 +71,8 @@ const getFileDownloadUrl = async (fileId) => {
     // 使用最大有效期（10年，约315360000秒）
     const maxAge = 315360000;
     
-    const response = await axios.post(
+    // 使用微信专用axios实例（跳过SSL证书校验）
+    const response = await wechatAxiosInstance.post(
       `https://api.weixin.qq.com/tcb/batchdownloadfile?access_token=${token}`,
       {
         env: wechatCloudEnvId,
@@ -143,8 +145,8 @@ exports.uploadToWechatCloud = async (localFilePath, cloudPath) => {
       knownLength: fileStats.size
     });
 
-    // 4. 上传文件到COS
-    const uploadResponse = await axios.post(uploadInfo.url, formData, {
+    // 4. 上传文件到COS（使用微信专用axios实例，跳过SSL证书校验）
+    const uploadResponse = await wechatAxiosInstance.post(uploadInfo.url, formData, {
       headers: {
         ...formData.getHeaders()
       },

@@ -5,15 +5,18 @@ const axios = require('axios');
 const https = require('https');
 const { wechatAppId, wechatAppSecret, wechatApiUrl } = require('../config');
 
-// 创建axios实例，配置SSL证书处理
-// 对于微信API调用，允许自签名证书（某些网络环境可能需要）
-const axiosInstance = axios.create({
+// 创建专门用于微信API的axios实例，跳过SSL证书校验
+// 仅针对微信API（api.weixin.qq.com）跳过证书校验，其他业务服务正常校验
+const wechatAxiosInstance = axios.create({
   httpsAgent: new https.Agent({
-    rejectUnauthorized: false, // 允许自签名证书，避免小程序体验版等环境的证书问题
+    rejectUnauthorized: false, // 仅对微信API跳过证书校验
     keepAlive: true
   }),
   timeout: 10000 // 10秒超时
 });
+
+// 导出微信专用axios实例，供其他模块使用（如wechatCloudStorageService）
+exports.wechatAxiosInstance = wechatAxiosInstance;
 
 /**
  * 通过code获取微信openid和session_key
@@ -34,7 +37,8 @@ exports.getWeChatOpenId = async (code) => {
   };
 
   try {
-    const response = await axiosInstance.get(url, { params });
+    // 使用微信专用axios实例（已配置跳过SSL证书校验）
+    const response = await wechatAxiosInstance.get(url, { params });
 
     if (response.data.errcode) {
       throw new Error(`微信API错误: ${response.data.errcode} - ${response.data.errmsg}`);
@@ -46,45 +50,9 @@ exports.getWeChatOpenId = async (code) => {
       unionid: response.data.unionid || null
     };
   } catch (error) {
-    // 处理SSL证书错误
-    if (error.code === 'SELF_SIGNED_CERT_IN_CHAIN' || 
-        error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
-        error.message.includes('self-signed certificate') ||
-        error.message.includes('certificate')) {
-      console.warn('SSL证书验证警告:', error.message);
-      // 如果遇到证书问题，尝试使用不验证证书的方式（仅用于开发环境）
-      if (process.env.NODE_ENV !== 'production') {
-        try {
-          const insecureAgent = new https.Agent({
-            rejectUnauthorized: false
-          });
-          const response = await axios.get(url, {
-            params,
-            httpsAgent: insecureAgent,
-            timeout: 10000
-          });
-          
-          if (response.data.errcode) {
-            throw new Error(`微信API错误: ${response.data.errcode} - ${response.data.errmsg}`);
-          }
-          
-          return {
-            openid: response.data.openid,
-            session_key: response.data.session_key,
-            unionid: response.data.unionid || null
-          };
-        } catch (retryError) {
-          throw new Error(`微信API请求失败（SSL证书问题）: ${retryError.message}`);
-        }
-      } else {
-        throw new Error('SSL证书验证失败，请联系管理员检查服务器证书配置');
-      }
-    }
-    
     if (error.response) {
       throw new Error(`微信API请求失败: ${error.response.data?.errmsg || error.message}`);
     }
-    
     throw new Error(`微信API请求失败: ${error.message}`);
   }
 };
@@ -104,7 +72,8 @@ exports.getWeChatUserInfo = async (accessToken, openid) => {
   };
 
   try {
-    const response = await axiosInstance.get(url, { params });
+    // 使用微信专用axios实例（已配置跳过SSL证书校验）
+    const response = await wechatAxiosInstance.get(url, { params });
 
     if (response.data.errcode) {
       throw new Error(`微信API错误: ${response.data.errcode} - ${response.data.errmsg}`);
@@ -112,36 +81,6 @@ exports.getWeChatUserInfo = async (accessToken, openid) => {
 
     return response.data;
   } catch (error) {
-    // 处理SSL证书错误
-    if (error.code === 'SELF_SIGNED_CERT_IN_CHAIN' || 
-        error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
-        error.message.includes('self-signed certificate') ||
-        error.message.includes('certificate')) {
-      console.warn('SSL证书验证警告:', error.message);
-      if (process.env.NODE_ENV !== 'production') {
-        try {
-          const insecureAgent = new https.Agent({
-            rejectUnauthorized: false
-          });
-          const response = await axios.get(url, {
-            params,
-            httpsAgent: insecureAgent,
-            timeout: 10000
-          });
-          
-          if (response.data.errcode) {
-            throw new Error(`微信API错误: ${response.data.errcode} - ${response.data.errmsg}`);
-          }
-          
-          return response.data;
-        } catch (retryError) {
-          throw new Error(`获取微信用户信息失败（SSL证书问题）: ${retryError.message}`);
-        }
-      } else {
-        throw new Error('SSL证书验证失败，请联系管理员检查服务器证书配置');
-      }
-    }
-    
     if (error.response) {
       throw new Error(`获取微信用户信息失败: ${error.response.data?.errmsg || error.message}`);
     }

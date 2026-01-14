@@ -4,6 +4,11 @@ const mongoose = require('mongoose');
 
 // 模特图片数组中的单个图片对象结构
 const modelImageSchema = new mongoose.Schema({
+  model_avatar_id: {
+    type: String,
+    required: false, // 改为非必填，兼容旧数据
+    unique: false // 在数组中不需要唯一索引，但值应该是唯一的
+  },
   full_body_image_url: {
     type: String,
     required: true

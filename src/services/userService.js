@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config');
 const { getWeChatOpenId } = require('../utils/wechatApi');
 const { generateRandomNickname, getRandomDefaultAvatar } = require('../utils/nicknameGenerator');
+const { generateDefaultModelData } = require('../utils/defaultModelData');
+const modelPersonService = require('./modelPersonService');
 
 // 微信小程序登录/注册（一键登录）
 exports.wechatLogin = async (code, userInfo = {}) => {
@@ -23,9 +25,12 @@ exports.wechatLogin = async (code, userInfo = {}) => {
 
     // 查找用户（通过openid）
     let user = await User.findOne({ openid });
+    let isNewUser = false;
 
     if (!user) {
       // 新用户，自动注册
+      isNewUser = true;
+      
       // 生成随机昵称（如果用户没有提供name或nickName）
       const generatedName = userInfo.name || userInfo.nickName || generateRandomNickname();
       
@@ -64,6 +69,25 @@ exports.wechatLogin = async (code, userInfo = {}) => {
     user.token = token;
     user.updatedAt = Date.now();
     await user.save();
+
+    // 如果是新用户，自动创建默认模特
+    if (isNewUser) {
+      try {
+        // 检查是否已有模特（防止重复创建）
+        const ModelPerson = require('../models/model/modelPersonModel');
+        const existingModel = await ModelPerson.findOne({ user_id: user._id });
+        
+        if (!existingModel) {
+          console.log('新用户注册，自动创建默认模特...');
+          const defaultModelData = generateDefaultModelData();
+          await modelPersonService.createOrUpdateUserModel(user._id, defaultModelData);
+          console.log('自动创建默认模特成功');
+        }
+      } catch (modelError) {
+        // 创建模特失败不影响用户注册，只记录错误
+        console.error('自动创建默认模特失败:', modelError.message);
+      }
+    }
 
     return {
       user: {

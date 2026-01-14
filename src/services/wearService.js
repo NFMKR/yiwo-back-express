@@ -11,7 +11,7 @@ const modelPersonService = require('./modelPersonService');
 const buildOutfitPrompt = (modelInfo, clothesUrls = []) => {
   let prompt = '生成一张高质量的穿搭效果图，';
   
-  // 模特基本信息
+  // 模特基本信息（只描述有值的字段）
   if (modelInfo.gender) {
     prompt += `模特是${modelInfo.gender}性，`;
   }
@@ -28,7 +28,7 @@ const buildOutfitPrompt = (modelInfo, clothesUrls = []) => {
     prompt += `${modelInfo.body_feature}体型，`;
   }
   
-  // 风格偏好
+  // 风格偏好（只描述有值的字段）
   if (modelInfo.style_preference) {
     prompt += `风格偏好：${modelInfo.style_preference}，`;
   }
@@ -39,12 +39,12 @@ const buildOutfitPrompt = (modelInfo, clothesUrls = []) => {
     prompt += `情绪氛围：${modelInfo.mood}，`;
   }
   
-  // 衣服描述
+  // 衣服描述（只描述有值的字段）
   if (clothesUrls.length > 0) {
     prompt += `参考提供的${clothesUrls.length}张衣服图片进行穿搭，`;
   }
   
-  // 场景描述
+  // 场景描述（只描述有值的字段）
   if (modelInfo.suitable_weather) {
     prompt += `适合${modelInfo.suitable_weather}季节穿着，`;
   }
@@ -56,14 +56,14 @@ const buildOutfitPrompt = (modelInfo, clothesUrls = []) => {
 };
 
 // 创建AI试穿任务（使用豆包4.5模型）
-exports.createTryOnTask = async (userId, taskData) => {
+// 所有参数在服务端封装，不需要从外部传入
+exports.createTryOnTask = async (userId) => {
   try {
-    const { 
-      model = arkModel, // 模型，从配置中获取，如果没有则使用默认值
-      size, // 图片尺寸，可选
-      watermark = true, // 是否添加水印，默认true
-      response_format = 'url' // 返回格式，默认url
-    } = taskData;
+    // 封装默认参数
+    const model = arkModel || 'doubao-seedream-4-5-251128'; // 模型，默认doubao-seedream-4-5-251128
+    const size = '2K'; // 图片尺寸，默认2K
+    const watermark = false; // 是否添加水印，默认false
+    const response_format = 'url'; // 返回格式，默认url
 
     // 获取用户的模特信息
     let modelPerson = await ModelPerson.findOne({ user_id: userId, status: '启用' });
@@ -87,51 +87,47 @@ exports.createTryOnTask = async (userId, taskData) => {
     // 验证URL格式的正则表达式
     const urlPattern = /^https?:\/\/.+/i;
 
-    // 获取模特的全身图片
+    // 获取模特的当前头像作为人像图片
     let personImageUrl = modelPerson.current_avatar_url;
-    if (!personImageUrl && modelPerson.avatar_images && modelPerson.avatar_images.length > 0) {
-      // 如果没有当前头像，使用第一张全身图
-      personImageUrl = modelPerson.avatar_images[0].full_body_image_url;
-    }
     
     if (!personImageUrl) {
-      throw new Error('模特的全身图片不能为空，请先上传模特图片');
+      throw new Error('模特的当前头像不能为空，请先设置模特的current_avatar_url');
     }
 
     // 验证模特图片URL格式
     if (!urlPattern.test(personImageUrl)) {
-      throw new Error(`模特的全身图片URL格式无效: ${personImageUrl}。请确保是有效的HTTP/HTTPS链接`);
+      throw new Error(`模特的当前头像URL格式无效: ${personImageUrl}。请确保是有效的HTTP/HTTPS链接`);
     }
 
     // 从模特信息中自动获取衣服URL（收集所有非空的衣服字段）
     const clothesUrls = [];
     const clothesFields = [
-      modelPerson.top_garment,      // 上装
-      modelPerson.bottom_garment,   // 下装
-      modelPerson.outerwear,         // 外套
-      modelPerson.headwear,         // 头饰
-      modelPerson.shoes,            // 鞋
-      modelPerson.bag,              // 包袋
-      modelPerson.accessories,      // 配饰
-      modelPerson.other_clothing    // 其它服装
+      { name: 'top_garment', value: modelPerson.top_garment },      // 上装
+      { name: 'bottom_garment', value: modelPerson.bottom_garment },   // 下装
+      { name: 'outerwear', value: modelPerson.outerwear },         // 外套
+      { name: 'headwear', value: modelPerson.headwear },         // 头饰
+      { name: 'shoes', value: modelPerson.shoes },            // 鞋
+      { name: 'bag', value: modelPerson.bag },              // 包袋
+      { name: 'accessories', value: modelPerson.accessories },      // 配饰
+      { name: 'other_clothing', value: modelPerson.other_clothing }    // 其它服装
     ];
 
     // 收集所有非空的衣服URL，并验证URL格式
-    clothesFields.forEach(url => {
-      if (url && url.trim() !== '') {
-        const trimmedUrl = url.trim();
+    clothesFields.forEach(field => {
+      if (field.value && field.value.trim() !== '') {
+        const trimmedUrl = field.value.trim();
         // 只添加有效的URL（以http://或https://开头）
         if (urlPattern.test(trimmedUrl)) {
           clothesUrls.push(trimmedUrl);
         } else {
-          console.warn('跳过无效的衣服URL（不是有效的HTTP/HTTPS链接）:', trimmedUrl);
+          console.warn(`跳过无效的衣服URL（${field.name}不是有效的HTTP/HTTPS链接）:`, trimmedUrl);
         }
       }
     });
 
-    // 验证衣服URL数量
+    // 验证衣服URL数量（至少需要一张衣服图片）
     if (clothesUrls.length === 0) {
-      throw new Error('模特的衣服信息为空，请先设置模特的衣服URL');
+      throw new Error('模特的衣服信息为空，请至少设置一张衣服图片URL');
     }
 
     if (clothesUrls.length > 14) {
@@ -158,14 +154,10 @@ exports.createTryOnTask = async (userId, taskData) => {
       prompt: prompt,
       image: imageArray,
       sequential_image_generation: 'disabled', // 单图模式
-      watermark: watermark,
-      response_format: response_format
+      size: size, // 图片尺寸，默认2K
+      watermark: watermark, // 是否添加水印，默认false
+      response_format: response_format // 返回格式，默认url
     };
-
-    // 可选参数
-    if (size) {
-      requestData.size = size;
-    }
 
     console.log('豆包API请求数据:', {
       model: requestData.model,
@@ -250,13 +242,16 @@ exports.createTryOnTask = async (userId, taskData) => {
       created: response.data.created
     });
 
-    // 保存任务到数据库
+    // 保存任务到数据库（在清空衣服字段之前）
+    const topGarmentUrl = modelPerson.top_garment || null;
+    const bottomGarmentUrl = modelPerson.bottom_garment || null;
+    
     const wearTask = new Wear({
       userId,
       taskId: response.data.created?.toString() || Date.now().toString(), // 使用创建时间戳作为任务ID
       personImageUrl: personImageUrl,
-      topGarmentUrl: clothesUrls[0] || null, // 第一张衣服图片作为上装
-      bottomGarmentUrl: clothesUrls[1] || null, // 第二张衣服图片作为下装
+      topGarmentUrl: topGarmentUrl,
+      bottomGarmentUrl: bottomGarmentUrl,
       taskStatus: 'SUCCEEDED', // 豆包API是同步返回，直接成功
       imageUrl: imageUrl, // 生成的图片URL
       requestId: response.data.created?.toString() || null,
@@ -267,6 +262,22 @@ exports.createTryOnTask = async (userId, taskData) => {
     });
 
     await wearTask.save();
+
+    // 更新模特的current_tryon_image_url字段
+    modelPerson.current_tryon_image_url = imageUrl;
+    
+    // 清空所有衣服字段的值
+    modelPerson.top_garment = '';
+    modelPerson.bottom_garment = '';
+    modelPerson.headwear = '';
+    modelPerson.accessories = '';
+    modelPerson.outerwear = '';
+    modelPerson.bag = '';
+    modelPerson.shoes = '';
+    modelPerson.other_clothing = '';
+    
+    modelPerson.updatedAt = Date.now();
+    await modelPerson.save();
 
     return {
       taskId: wearTask.taskId,

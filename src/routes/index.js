@@ -51,9 +51,13 @@ const {
 const {
   createOrUpdateUserModel,
   getUserModel,
+  updateModelInfo,
   updateCurrentAvatar,
   updateCurrentTryonImage,
-  deleteModelImage
+  deleteModelImage,
+  addModelAvatar,
+  deleteModelAvatarById,
+  getModelAvatars
 } = require('../controllers/modelPersonController');
 
 const {
@@ -116,9 +120,15 @@ router.get('/binding/favorites', authMiddleware, getFavoriteClothes);      // �
 // 用户模特相关接口（需要认证，1:1关系）
 router.post('/models/create', authMiddleware, createOrUpdateUserModel);   // 创建或更新用户模特（上传图片）
 router.get('/models/my', authMiddleware, getUserModel);                  // 获取用户自己的模特
+router.put('/models/info', authMiddleware, updateModelInfo);             // 修改模特信息（不包含图片）
 router.put('/models/current-avatar', authMiddleware, updateCurrentAvatar); // 更新当前头像
 router.put('/models/current-tryon', authMiddleware, updateCurrentTryonImage); // 更新当前试穿效果图
-router.delete('/models/image', authMiddleware, deleteModelImage);        // 删除模特图片
+router.delete('/models/image', authMiddleware, deleteModelImage);        // 删除模特图片（通过URL，兼容接口）
+
+// 模特头像管理接口
+router.post('/models/avatar', authMiddleware, uploadSingle('file'), handleUploadError, addModelAvatar); // 上传头像并自动添加到数组
+router.get('/models/avatars', authMiddleware, getModelAvatars);           // 获取模特头像列表
+router.delete('/models/avatar', authMiddleware, deleteModelAvatarById);  // 通过model_avatar_id删除头像
 
 // ==================== 文件上传路由 ====================
 

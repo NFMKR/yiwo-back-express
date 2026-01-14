@@ -3,24 +3,14 @@
 const wearService = require('../services/wearService');
 
 // 创建AI试穿任务（使用豆包4.5模型）
+// 不需要请求体，所有参数在服务端封装
 exports.createTryOnTask = async (req, res) => {
   try {
     const userId = req.user.userId; // 从认证中间件获取
-    const {
-      model, // 模型，可选，默认doubao-seedream-4.5
-      size, // 图片尺寸，可选
-      watermark, // 是否添加水印，可选，默认true
-      response_format // 返回格式，可选，默认url
-    } = req.body;
 
-    // 衣服URL会自动从模特的衣服字段中获取，不需要从请求体传入
-
-    const result = await wearService.createTryOnTask(userId, {
-      model,
-      size,
-      watermark,
-      response_format
-    });
+    // 直接调用服务，不需要传递任何参数
+    // 所有参数（model, size, watermark, response_format）在服务端封装
+    const result = await wearService.createTryOnTask(userId);
 
     res.status(201).json({
       success: true,

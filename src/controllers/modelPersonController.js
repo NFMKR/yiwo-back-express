@@ -149,7 +149,7 @@ exports.updateCurrentTryonImage = async (req, res) => {
   }
 };
 
-// 删除模特图片
+// 删除模特图片（通过URL，保留用于兼容）
 exports.deleteModelImage = async (req, res) => {
   try {
     const userId = req.user.userId; // 从认证中间件获取
@@ -173,6 +173,117 @@ exports.deleteModelImage = async (req, res) => {
     res.status(400).json({
       success: false,
       message: error.message || '删除图片失败'
+    });
+  }
+};
+
+// 修改模特信息（不包含图片相关字段）
+exports.updateModelInfo = async (req, res) => {
+  try {
+    const userId = req.user.userId; // 从认证中间件获取
+    const updateData = req.body;
+
+    // 验证请求体是否为有效的JSON对象
+    if (!updateData || typeof updateData !== 'object' || Array.isArray(updateData)) {
+      return res.status(400).json({
+        success: false,
+        message: '请求体必须是有效的JSON对象'
+      });
+    }
+
+    // 添加调试日志
+    console.log('更新模特信息请求数据:', {
+      userId,
+      updateData: JSON.stringify(updateData),
+      keys: Object.keys(updateData)
+    });
+
+    const result = await modelPersonService.updateModelInfo(userId, updateData);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || '更新模特信息失败'
+    });
+  }
+};
+
+// 上传头像并自动添加到数组（封装上传逻辑）
+exports.addModelAvatar = async (req, res) => {
+  try {
+    const userId = req.user.userId; // 从认证中间件获取
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: '请选择要上传的图片文件'
+      });
+    }
+
+    const result = await modelPersonService.addModelAvatar(userId, req.file);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || '上传头像失败'
+    });
+  }
+};
+
+// 通过model_avatar_id删除头像
+exports.deleteModelAvatarById = async (req, res) => {
+  try {
+    const userId = req.user.userId; // 从认证中间件获取
+    const { model_avatar_id } = req.body;
+
+    if (!model_avatar_id) {
+      return res.status(400).json({
+        success: false,
+        message: '头像ID不能为空'
+      });
+    }
+
+    const result = await modelPersonService.deleteModelAvatarById(userId, model_avatar_id);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || '删除头像失败'
+    });
+  }
+};
+
+// 获取模特头像列表
+exports.getModelAvatars = async (req, res) => {
+  try {
+    const userId = req.user.userId; // 从认证中间件获取
+
+    const result = await modelPersonService.getModelAvatars(userId);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || '获取头像列表失败'
     });
   }
 };

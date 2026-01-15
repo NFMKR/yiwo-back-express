@@ -78,14 +78,25 @@ exports.wechatLogin = async (code, userInfo = {}) => {
         const existingModel = await ModelPerson.findOne({ user_id: user._id });
         
         if (!existingModel) {
-          console.log('新用户注册，自动创建默认模特...');
+          console.log('新用户注册，自动创建默认模特...', { userId: user._id });
           const defaultModelData = generateDefaultModelData();
-          await modelPersonService.createOrUpdateUserModel(user._id, defaultModelData);
-          console.log('自动创建默认模特成功');
+          console.log('默认模特数据:', JSON.stringify(defaultModelData, null, 2));
+          
+          const createResult = await modelPersonService.createOrUpdateUserModel(user._id, defaultModelData);
+          console.log('自动创建默认模特成功:', { 
+            modelId: createResult.model?.id,
+            modelName: createResult.model?.model_name 
+          });
+        } else {
+          console.log('用户已有模特，跳过自动创建', { userId: user._id, modelId: existingModel._id });
         }
       } catch (modelError) {
-        // 创建模特失败不影响用户注册，只记录错误
-        console.error('自动创建默认模特失败:', modelError.message);
+        // 创建模特失败不影响用户注册，但记录详细错误
+        console.error('自动创建默认模特失败:', {
+          userId: user._id,
+          error: modelError.message,
+          stack: modelError.stack
+        });
       }
     }
 

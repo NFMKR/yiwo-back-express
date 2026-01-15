@@ -128,24 +128,35 @@ const dropEmailIndex = async () => {
     console.log('成功删除 email 唯一索引');
   } catch (err) {
     // 27 表示索引不存在，这是正常情况，不需要报错
-    if (err.code === 27 || err.codeName === 'IndexNotFound') {
+    if (err.code === 27 || err.codeName === 'IndexNotFound' || err.message?.includes('index not found')) {
       // 索引不存在，这是正常的，不需要处理
-      console.log('email_1 索引不存在，无需删除');
+      // 不输出日志，避免日志噪音
     } else {
       // 其他错误才需要记录
-      console.error('删除 email 唯一索引失败:', err.message);
+      console.error('删除 email 唯一索引失败:', err.message || err);
     }
   }
 };
 
-// 在数据库连接建立后执行
+// 在数据库连接建立后执行（延迟执行，确保连接稳定）
+const initEmailIndexCleanup = () => {
+  // 延迟执行，确保数据库连接完全建立
+  setTimeout(async () => {
+    try {
+      await dropEmailIndex();
+    } catch (err) {
+      // 静默处理，不抛出异常
+    }
+  }, 2000); // 延迟2秒执行
+};
+
 if (mongoose.connection.readyState === 1) {
-  // 如果数据库已连接，立即尝试删除索引
-  dropEmailIndex();
+  // 如果数据库已连接，延迟执行
+  initEmailIndexCleanup();
 } else {
   // 如果数据库未连接，在连接后执行
   mongoose.connection.once('connected', function() {
-    dropEmailIndex();
+    initEmailIndexCleanup();
   });
 }
 

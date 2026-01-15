@@ -78,26 +78,54 @@ exports.wechatLogin = async (code, userInfo = {}) => {
         const existingModel = await ModelPerson.findOne({ user_id: user._id });
         
         if (!existingModel) {
-          console.log('新用户注册，自动创建默认模特...', { userId: user._id });
+          console.log('新用户注册，自动创建默认模特...', { 
+            userId: user._id.toString(),
+            openid: user.openid 
+          });
+          
           const defaultModelData = generateDefaultModelData();
           console.log('默认模特数据:', JSON.stringify(defaultModelData, null, 2));
           
+          // 创建模特
           const createResult = await modelPersonService.createOrUpdateUserModel(user._id, defaultModelData);
+          
+          // 验证创建结果
+          if (!createResult || !createResult.model || !createResult.model.id) {
+            throw new Error('创建模特返回结果异常');
+          }
+          
+          // 再次查询验证模特是否真的创建成功
+          const verifyModel = await ModelPerson.findOne({ user_id: user._id });
+          if (!verifyModel) {
+            throw new Error('模特创建后验证失败，数据库中未找到');
+          }
+          
           console.log('自动创建默认模特成功:', { 
-            modelId: createResult.model?.id,
-            modelName: createResult.model?.model_name 
+            modelId: createResult.model.id,
+            modelName: createResult.model.model_name,
+            status: verifyModel.status,
+            verified: true
           });
         } else {
-          console.log('用户已有模特，跳过自动创建', { userId: user._id, modelId: existingModel._id });
+          console.log('用户已有模特，跳过自动创建', { 
+            userId: user._id.toString(), 
+            modelId: existingModel._id.toString(),
+            status: existingModel.status
+          });
         }
       } catch (modelError) {
         // 创建模特失败不影响用户注册，但记录详细错误
         console.error('自动创建默认模特失败:', {
-          userId: user._id,
+          userId: user._id?.toString(),
+          openid: user.openid,
           error: modelError.message,
-          stack: modelError.stack
+          stack: modelError.stack,
+          errorName: modelError.name
         });
+        // 不抛出错误，允许用户注册继续
       }
+    } else {
+      console.log('老用户登录，跳过自动创建模特', { userId: user._id.toString() });
     }
 
     return {

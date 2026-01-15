@@ -87,9 +87,17 @@ exports.createOrUpdateUserModel = async (userId, modelData) => {
       // 创建新模特
       // 生成唯一的头像ID
       const avatarId = await generateUniqueModelAvatarId();
+      
+      console.log('创建新模特:', {
+        userId: userId.toString(),
+        avatarId,
+        full_body_image_url,
+        current_avatar_url: current_avatar_url || full_body_image_url
+      });
+      
       model = new ModelPerson({
         user_id: userId,
-        model_name: model_name || '',
+        model_name: model_name || '我的模特',
         avatar_images: [{
           model_avatar_id: avatarId,
           full_body_image_url
@@ -114,10 +122,18 @@ exports.createOrUpdateUserModel = async (userId, modelData) => {
         shoes: shoes || '',
         other_clothing: other_clothing || '',
         description: description || '',
-        status: '启用'
+        status: '启用' // 确保设置为启用状态
       });
 
+      // 保存模特
       await model.save();
+      
+      console.log('模特保存成功:', {
+        modelId: model._id.toString(),
+        userId: model.user_id.toString(),
+        status: model.status,
+        avatarCount: model.avatar_images.length
+      });
     }
 
     return {

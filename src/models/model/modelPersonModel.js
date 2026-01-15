@@ -28,7 +28,8 @@ const modelPersonSchema = new mongoose.Schema({
   model_id: {
     type: String,
     default: null,
-    trim: true
+    trim: true,
+    sparse: true // 允许null值，但如果有值则必须唯一
   },
   // 模特名字
   model_name: {
@@ -182,4 +183,45 @@ modelPersonSchema.pre('save', function() {
   this.updatedAt = Date.now();
 });
 
-module.exports = mongoose.model('ModelPerson', modelPersonSchema);
+const ModelPerson = mongoose.model('ModelPerson', modelPersonSchema);
+
+// 在模型初始化后，尝试删除 modelId 的唯一索引（如果存在）
+// 因为 modelId 是可选字段，不应该有唯一索引
+const dropModelIdIndex = async () => {
+  try {
+    await ModelPerson.collection.dropIndex('modelId_1');
+    console.log('成功删除 modelId 唯一索引');
+  } catch (err) {
+    // 27 表示索引不存在，这是正常情况
+    if (err.code === 27 || err.codeName === 'IndexNotFound' || err.message?.includes('index not found')) {
+      // 索引不存在，这是正常的，不需要处理
+    } else {
+      // 其他错误才需要记录
+      console.error('删除 modelId 唯一索引失败:', err.message || err);
+    }
+  }
+};
+
+// 在数据库连接建立后执行（延迟执行，确保连接稳定）
+const initModelIdIndexCleanup = () => {
+  // 延迟执行，确保数据库连接完全建立
+  setTimeout(async () => {
+    try {
+      await dropModelIdIndex();
+    } catch (err) {
+      // 静默处理，不抛出异常
+    }
+  }, 2000); // 延迟2秒执行
+};
+
+if (mongoose.connection.readyState === 1) {
+  // 如果数据库已连接，延迟执行
+  initModelIdIndexCleanup();
+} else {
+  // 如果数据库未连接，在连接后执行
+  mongoose.connection.once('connected', function() {
+    initModelIdIndexCleanup();
+  });
+}
+
+module.exports = ModelPerson;

@@ -122,25 +122,30 @@ const User = mongoose.model('User', userSchema);
 
 // 在模型初始化后，尝试删除 email 的唯一索引（如果存在）
 // 这需要在数据库连接建立后执行
+const dropEmailIndex = async () => {
+  try {
+    await User.collection.dropIndex('email_1');
+    console.log('成功删除 email 唯一索引');
+  } catch (err) {
+    // 27 表示索引不存在，这是正常情况，不需要报错
+    if (err.code === 27 || err.codeName === 'IndexNotFound') {
+      // 索引不存在，这是正常的，不需要处理
+      console.log('email_1 索引不存在，无需删除');
+    } else {
+      // 其他错误才需要记录
+      console.error('删除 email 唯一索引失败:', err.message);
+    }
+  }
+};
+
+// 在数据库连接建立后执行
 if (mongoose.connection.readyState === 1) {
   // 如果数据库已连接，立即尝试删除索引
-  User.collection.dropIndex('email_1', function(err) {
-    if (err && err.code !== 27) { // 27 表示索引不存在
-      console.error('删除 email 唯一索引失败:', err);
-    } else if (!err) {
-      console.log('成功删除 email 唯一索引');
-    }
-  });
+  dropEmailIndex();
 } else {
   // 如果数据库未连接，在连接后执行
   mongoose.connection.once('connected', function() {
-    User.collection.dropIndex('email_1', function(err) {
-      if (err && err.code !== 27) { // 27 表示索引不存在
-        console.error('删除 email 唯一索引失败:', err);
-      } else if (!err) {
-        console.log('成功删除 email 唯一索引');
-      }
-    });
+    dropEmailIndex();
   });
 }
 

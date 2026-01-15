@@ -17,12 +17,13 @@ const getAccessToken = async () => {
       return accessToken;
     }
 
-    const response = await wechatAxiosInstance.get('https://api.weixin.qq.com/cgi-bin/token', {
-      params: {
-        grant_type: 'client_credential',
-        appid: wechatAppId,
-        secret: wechatAppSecret
-      }
+    // 使用 getStableAccessToken API 获取稳定的 access_token
+    // 这是微信推荐的方式，可以避免 access_token 频繁刷新导致的问题
+    const response = await wechatAxiosInstance.post('https://api.weixin.qq.com/cgi-bin/stable_token', {
+      grant_type: 'client_credential',
+      appid: wechatAppId,
+      secret: wechatAppSecret,
+      force_refresh: false // 不强制刷新，使用缓存的token
     });
 
     if (response.data.errcode) {
@@ -30,7 +31,9 @@ const getAccessToken = async () => {
     }
 
     accessToken = response.data.access_token;
-    tokenExpireTime = Date.now() + (response.data.expires_in - 300) * 1000;
+    // token有效期，提前5分钟刷新
+    const expiresIn = response.data.expires_in || 7200;
+    tokenExpireTime = Date.now() + (expiresIn - 300) * 1000;
 
     return accessToken;
   } catch (error) {

@@ -40,6 +40,7 @@ const userSchema = new mongoose.Schema({
     default: '',
     lowercase: true,
     trim: true
+    // 不设置 unique，允许重复和空值
   },
   userphone: {
     type: String,
@@ -117,4 +118,30 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+
+// 在模型初始化后，尝试删除 email 的唯一索引（如果存在）
+// 这需要在数据库连接建立后执行
+if (mongoose.connection.readyState === 1) {
+  // 如果数据库已连接，立即尝试删除索引
+  User.collection.dropIndex('email_1', function(err) {
+    if (err && err.code !== 27) { // 27 表示索引不存在
+      console.error('删除 email 唯一索引失败:', err);
+    } else if (!err) {
+      console.log('成功删除 email 唯一索引');
+    }
+  });
+} else {
+  // 如果数据库未连接，在连接后执行
+  mongoose.connection.once('connected', function() {
+    User.collection.dropIndex('email_1', function(err) {
+      if (err && err.code !== 27) { // 27 表示索引不存在
+        console.error('删除 email 唯一索引失败:', err);
+      } else if (!err) {
+        console.log('成功删除 email 唯一索引');
+      }
+    });
+  });
+}
+
+module.exports = User;

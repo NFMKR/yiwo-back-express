@@ -92,10 +92,10 @@ exports.getClothesByShopId = async (req, res) => {
   }
 };
 
-// 根据_id获取指定衣服详细信息
+// 根据_id或clothesId获取指定衣服详细信息
 exports.getClothesById = async (req, res) => {
   try {
-    const { id } = req.params; // 使用_id
+    const { id } = req.params; // 可以是MongoDB _id或clothesId
 
     if (!id) {
       return res.status(400).json({

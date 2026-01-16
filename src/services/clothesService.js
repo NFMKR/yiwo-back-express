@@ -130,11 +130,20 @@ exports.getClothesByShopId = async (shopId, options = {}) => {
   }
 };
 
-// 根据_id获取指定衣服详细信息
-exports.getClothesById = async (clothesId) => {
+// 根据_id或clothesId获取指定衣服详细信息
+exports.getClothesById = async (idOrClothesId) => {
   try {
-    // 使用MongoDB的_id查找
-    const clothes = await Clothes.findById(clothesId).select('-__v');
+    let clothes;
+    
+    // 判断是MongoDB ObjectId还是clothesId字符串
+    // MongoDB ObjectId是24位十六进制字符串
+    if (idOrClothesId.match(/^[0-9a-fA-F]{24}$/)) {
+      // 是MongoDB ObjectId，使用_id查找
+      clothes = await Clothes.findById(idOrClothesId).select('-__v');
+    } else {
+      // 是clothesId字符串，使用clothesId查找
+      clothes = await Clothes.findOne({ clothesId: idOrClothesId }).select('-__v');
+    }
     
     if (!clothes) {
       throw new Error('衣服不存在');

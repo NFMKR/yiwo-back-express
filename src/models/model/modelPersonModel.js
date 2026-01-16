@@ -9,7 +9,7 @@ const modelImageSchema = new mongoose.Schema({
     required: false, // 改为非必填，兼容旧数据
     unique: false // 在数组中不需要唯一索引，但值应该是唯一的
   },
-  full_body_image_url: {
+  avatar_images_url: {
     type: String,
     required: true
   }
@@ -59,7 +59,7 @@ const modelPersonSchema = new mongoose.Schema({
     default: null,
     index: true
   },
-  // 年龄阶段
+     // 年龄阶段
   age_stage: {
     type: String,
     enum: ['儿童', '青少年', '青年', '中年', '老年'],
@@ -106,7 +106,7 @@ const modelPersonSchema = new mongoose.Schema({
     default: null
   },
   // 风格偏好
-  style_preference: {
+    style_preference: {
     type: String,
     enum: ['简约', '复古', '潮流', '经典', '个性', '甜美', '帅气', '优雅', '其他'],
     default: null

@@ -225,7 +225,20 @@ exports.addModelAvatar = async (req, res) => {
       });
     }
 
+    console.log('上传头像请求:', {
+      userId,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      filePath: req.file.path
+    });
+
     const result = await modelPersonService.addModelAvatar(userId, req.file);
+
+    console.log('头像上传成功:', {
+      userId,
+      avatarId: result.avatar?.model_avatar_id,
+      avatarUrl: result.avatar?.avatar_images_url
+    });
 
     res.status(200).json({
       success: true,
@@ -233,6 +246,11 @@ exports.addModelAvatar = async (req, res) => {
       data: result
     });
   } catch (error) {
+    console.error('上传头像失败:', {
+      userId: req.user?.userId,
+      error: error.message,
+      stack: error.stack
+    });
     res.status(400).json({
       success: false,
       message: error.message || '上传头像失败'

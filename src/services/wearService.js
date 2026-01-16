@@ -3,6 +3,7 @@
 const axios = require('axios');
 const Wear = require('../models/ai_wear/wearModel');
 const ModelPerson = require('../models/model/modelPersonModel');
+const Clothes = require('../models/clothes/clothesModel');
 const { arkApiKey, arkApiUrl, arkModel } = require('../config');
 const { generateDefaultModelData } = require('../utils/defaultModelData');
 const modelPersonService = require('./modelPersonService');
@@ -99,31 +100,53 @@ exports.createTryOnTask = async (userId) => {
       throw new Error(`模特的当前头像URL格式无效: ${personImageUrl}。请确保是有效的HTTP/HTTPS链接`);
     }
 
-    // 从模特信息中自动获取衣服URL（收集所有非空的衣服字段）
+    // 从模特信息中自动获取衣服URL和ID（收集所有非空的衣服字段）
     const clothesUrls = [];
+    const clothesInfo = []; // 存储衣服的完整信息（ID、URL、类型、二维码）
     const clothesFields = [
-      { name: 'top_garment', value: modelPerson.top_garment },      // 上装
-      { name: 'bottom_garment', value: modelPerson.bottom_garment },   // 下装
-      { name: 'outerwear', value: modelPerson.outerwear },         // 外套
-      { name: 'headwear', value: modelPerson.headwear },         // 头饰
-      { name: 'shoes', value: modelPerson.shoes },            // 鞋
-      { name: 'bag', value: modelPerson.bag },              // 包袋
-      { name: 'accessories', value: modelPerson.accessories },      // 配饰
-      { name: 'other_clothing', value: modelPerson.other_clothing }    // 其它服装
+      { name: 'top_garment', url: modelPerson.top_garment, id: modelPerson.top_garment_id, positionType: '上装' },
+      { name: 'bottom_garment', url: modelPerson.bottom_garment, id: modelPerson.bottom_garment_id, positionType: '下装' },
+      { name: 'outerwear', url: modelPerson.outerwear, id: modelPerson.outerwear_id, positionType: '外套' },
+      { name: 'headwear', url: modelPerson.headwear, id: modelPerson.headwear_id, positionType: '头饰/帽' },
+      { name: 'shoes', url: modelPerson.shoes, id: modelPerson.shoes_id, positionType: '鞋' },
+      { name: 'bag', url: modelPerson.bag, id: modelPerson.bag_id, positionType: '包袋' },
+      { name: 'accessories', url: modelPerson.accessories, id: modelPerson.accessories_id, positionType: '配饰' },
+      { name: 'other_clothing', url: modelPerson.other_clothing, id: modelPerson.other_clothing_id, positionType: '其他' }
     ];
 
-    // 收集所有非空的衣服URL，并验证URL格式
-    clothesFields.forEach(field => {
-      if (field.value && field.value.trim() !== '') {
-        const trimmedUrl = field.value.trim();
+    // 收集所有非空的衣服URL和ID，并验证URL格式
+    for (const field of clothesFields) {
+      if (field.url && field.url.trim() !== '') {
+        const trimmedUrl = field.url.trim();
         // 只添加有效的URL（以http://或https://开头）
         if (urlPattern.test(trimmedUrl)) {
           clothesUrls.push(trimmedUrl);
+          
+          // 如果有ID，查找衣服信息获取二维码
+          let shopQrImageUrl = '';
+          if (field.id && field.id.trim() !== '') {
+            try {
+              const clothes = await Clothes.findOne({ clothesId: field.id.trim() });
+              if (clothes && clothes.shop_qr_image_url) {
+                shopQrImageUrl = clothes.shop_qr_image_url;
+              }
+            } catch (err) {
+              console.warn(`查找衣服信息失败（${field.name}）:`, err.message);
+            }
+          }
+          
+          clothesInfo.push({
+            field: field.name,
+            clothesId: field.id || '',
+            clothesUrl: trimmedUrl,
+            positionType: field.positionType,
+            shopQrImageUrl: shopQrImageUrl
+          });
         } else {
           console.warn(`跳过无效的衣服URL（${field.name}不是有效的HTTP/HTTPS链接）:`, trimmedUrl);
         }
       }
-    });
+    }
 
     // 验证衣服URL数量（至少需要一张衣服图片）
     if (clothesUrls.length === 0) {
@@ -242,7 +265,7 @@ exports.createTryOnTask = async (userId) => {
       created: response.data.created
     });
 
-    // 保存任务到数据库（在清空衣服字段之前）
+    // 保存任务到数据库（在清空衣服字段之前，记录衣服信息）
     const topGarmentUrl = modelPerson.top_garment || null;
     const bottomGarmentUrl = modelPerson.bottom_garment || null;
     
@@ -250,8 +273,9 @@ exports.createTryOnTask = async (userId) => {
       userId,
       taskId: response.data.created?.toString() || Date.now().toString(), // 使用创建时间戳作为任务ID
       personImageUrl: personImageUrl,
-      topGarmentUrl: topGarmentUrl,
-      bottomGarmentUrl: bottomGarmentUrl,
+      topGarmentUrl: topGarmentUrl, // 兼容旧数据
+      bottomGarmentUrl: bottomGarmentUrl, // 兼容旧数据
+      clothes: clothesInfo, // 记录衣服的完整信息（ID、URL、类型、二维码）
       taskStatus: 'SUCCEEDED', // 豆包API是同步返回，直接成功
       imageUrl: imageUrl, // 生成的图片URL
       requestId: response.data.created?.toString() || null,
@@ -266,23 +290,45 @@ exports.createTryOnTask = async (userId) => {
     // 更新模特的current_tryon_image_url字段
     modelPerson.current_tryon_image_url = imageUrl;
     
-    // 清空所有衣服字段的值
+    // 清空所有衣服字段的值（URL和ID都要清空）
     modelPerson.top_garment = '';
+    modelPerson.top_garment_id = '';
     modelPerson.bottom_garment = '';
+    modelPerson.bottom_garment_id = '';
     modelPerson.headwear = '';
+    modelPerson.headwear_id = '';
     modelPerson.accessories = '';
+    modelPerson.accessories_id = '';
     modelPerson.outerwear = '';
+    modelPerson.outerwear_id = '';
     modelPerson.bag = '';
+    modelPerson.bag_id = '';
     modelPerson.shoes = '';
+    modelPerson.shoes_id = '';
     modelPerson.other_clothing = '';
+    modelPerson.other_clothing_id = '';
     
     modelPerson.updatedAt = Date.now();
     await modelPerson.save();
+
+    // 构建返回的衣服信息（只返回有值的字段）
+    const returnedClothes = {};
+    clothesInfo.forEach(item => {
+      if (item.clothesId || item.clothesUrl) {
+        returnedClothes[item.field] = {
+          clothesId: item.clothesId || '',
+          clothesUrl: item.clothesUrl || '',
+          positionType: item.positionType,
+          shopQrImageUrl: item.shopQrImageUrl || ''
+        };
+      }
+    });
 
     return {
       taskId: wearTask.taskId,
       taskStatus: 'SUCCEEDED',
       imageUrl: imageUrl,
+      clothes: returnedClothes, // 返回试穿的衣服信息（只包含有值的字段）
       model: response.data.model,
       created: response.data.created,
       usage: response.data.usage,
@@ -374,19 +420,41 @@ exports.getUserTryOnRecords = async (userId, options = {}) => {
       .sort({ endTime: -1 }) // 按完成时间倒序，最新的在前面
       .skip((page - 1) * limit)
       .limit(limit)
-      .select('imageUrl endTime topGarmentUrl bottomGarmentUrl taskId createdAt');
+      .select('imageUrl endTime clothes topGarmentUrl bottomGarmentUrl taskId createdAt');
 
     const total = await Wear.countDocuments(query);
 
     // 格式化返回数据
-    const formattedRecords = records.map(record => ({
-      taskId: record.taskId,
-      resultImageUrl: record.imageUrl, // 试穿效果图
-      endTime: record.endTime, // 完成时间
-      topGarmentUrl: record.topGarmentUrl, // 上衣图片
-      bottomGarmentUrl: record.bottomGarmentUrl, // 下衣图片
-      createdAt: record.createdAt // 创建时间
-    }));
+    const formattedRecords = records.map(record => {
+      const result = {
+        taskId: record.taskId,
+        resultImageUrl: record.imageUrl, // 试穿效果图
+        endTime: record.endTime, // 完成时间
+        createdAt: record.createdAt // 创建时间
+      };
+      
+      // 如果有新的clothes数组，使用新的格式
+      if (record.clothes && record.clothes.length > 0) {
+        const clothesData = {};
+        record.clothes.forEach(item => {
+          if (item.clothesId || item.clothesUrl) {
+            clothesData[item.field] = {
+              clothesId: item.clothesId || '',
+              clothesUrl: item.clothesUrl || '',
+              positionType: item.positionType || '',
+              shopQrImageUrl: item.shopQrImageUrl || ''
+            };
+          }
+        });
+        result.clothes = clothesData;
+      } else {
+        // 兼容旧数据格式
+        result.topGarmentUrl = record.topGarmentUrl || null;
+        result.bottomGarmentUrl = record.bottomGarmentUrl || null;
+      }
+      
+      return result;
+    });
 
     return {
       records: formattedRecords,

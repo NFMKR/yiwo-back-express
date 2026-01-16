@@ -116,40 +116,80 @@ const modelPersonSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  top_garment_id: {
+    type: String,
+    default: '',
+    trim: true
+  },
   // 下装
   bottom_garment: {
     type: String,
     default: ''
+  },
+  bottom_garment_id: {
+    type: String,
+    default: '',
+    trim: true
   },
   // 头饰
   headwear: {
     type: String,
     default: ''
   },
+  headwear_id: {
+    type: String,
+    default: '',
+    trim: true
+  },
   // 配饰
   accessories: {
     type: String,
     default: ''
+  },
+  accessories_id: {
+    type: String,
+    default: '',
+    trim: true
   },
   // 外套
   outerwear: {
     type: String,
     default: ''
   },
+  outerwear_id: {
+    type: String,
+    default: '',
+    trim: true
+  },
   // 包袋
   bag: {
     type: String,
     default: ''
+  },
+  bag_id: {
+    type: String,
+    default: '',
+    trim: true
   },
   // 鞋
   shoes: {
     type: String,
     default: ''
   },
+  shoes_id: {
+    type: String,
+    default: '',
+    trim: true
+  },
   // 其它服装
   other_clothing: {
     type: String,
     default: ''
+  },
+  other_clothing_id: {
+    type: String,
+    default: '',
+    trim: true
   },
   // 描述
   description: {

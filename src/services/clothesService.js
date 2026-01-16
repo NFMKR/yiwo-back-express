@@ -235,6 +235,27 @@ exports.updateClothes = async (clothesId, updateData) => {
   }
 };
 
+// 根据衣服ID（clothesId）获取衣服的二维码
+exports.getClothesQrCode = async (clothesId) => {
+  try {
+    // 使用clothesId查找衣服
+    const clothes = await Clothes.findOne({ clothesId }).select('clothesId shop_qr_image_url shopId shopName');
+    
+    if (!clothes) {
+      throw new Error('衣服不存在');
+    }
+
+    return {
+      clothesId: clothes.clothesId,
+      shopId: clothes.shopId,
+      shopName: clothes.shopName,
+      shopQrImageUrl: clothes.shop_qr_image_url || ''
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
 // 根据_id删除指定衣服
 exports.deleteClothes = async (clothesId) => {
   try {

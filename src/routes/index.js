@@ -31,12 +31,13 @@ const {
   generateShopQRCode
 } = require('../controllers/shopController');
 
-const {
+const { 
   createClothes,
   getClothesByShopId,
   getClothesById,
   updateClothes,
-  deleteClothes
+  deleteClothes,
+  getClothesQrCode
 } = require('../controllers/clothesController');
 
 const {
@@ -99,6 +100,7 @@ router.post('/shop/:shopId/qrcode', authMiddleware, generateShopQRCode);   // �
 // 衣服相关接口（需要认证）
 router.post('/clothes/create', authMiddleware, createClothes);             // 创建衣服
 router.get('/clothes/shop/:shopId', authMiddleware, getClothesByShopId);   // 获取指定店铺的所有衣服（需要放在具体路由之前）
+router.get('/clothes/qrcode/:clothesId', authMiddleware, getClothesQrCode); // 根据clothesId获取衣服二维码（需要放在:id之前）
 router.get('/clothes/:id', authMiddleware, getClothesById);                // 根据_id获取指定衣服详细信息
 router.put('/clothes/:id', authMiddleware, updateClothes);                 // 根据_id修改指定衣服信息
 router.delete('/clothes/:id', authMiddleware, deleteClothes);               // 根据_id删除指定衣服

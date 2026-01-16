@@ -18,6 +18,30 @@ const wearSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // 试穿的衣服信息（数组，支持多件衣服）
+  clothes: [{
+    field: {
+      type: String,
+      default: '' // 字段名：top_garment, bottom_garment等
+    },
+    clothesId: {
+      type: String,
+      default: ''
+    },
+    clothesUrl: {
+      type: String,
+      default: ''
+    },
+    positionType: {
+      type: String,
+      default: ''
+    },
+    shopQrImageUrl: {
+      type: String,
+      default: ''
+    }
+  }],
+  // 兼容旧数据：保留原有字段
   topGarmentUrl: {
     type: String,
     default: null

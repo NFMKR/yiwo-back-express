@@ -22,13 +22,21 @@ exports.createOrUpdateUserModel = async (userId, modelData) => {
       mood,
       style_preference,
       top_garment,
+      top_garment_id,
       bottom_garment,
+      bottom_garment_id,
       headwear,
+      headwear_id,
       accessories,
+      accessories_id,
       outerwear,
+      outerwear_id,
       bag,
+      bag_id,
       shoes,
+      shoes_id,
       other_clothing,
+      other_clothing_id,
       description,
       current_avatar_url,
       current_tryon_image_url
@@ -70,13 +78,21 @@ exports.createOrUpdateUserModel = async (userId, modelData) => {
       if (mood !== undefined) model.mood = mood;
       if (style_preference !== undefined) model.style_preference = style_preference;
       if (top_garment !== undefined) model.top_garment = top_garment;
+      if (top_garment_id !== undefined) model.top_garment_id = top_garment_id;
       if (bottom_garment !== undefined) model.bottom_garment = bottom_garment;
+      if (bottom_garment_id !== undefined) model.bottom_garment_id = bottom_garment_id;
       if (headwear !== undefined) model.headwear = headwear;
+      if (headwear_id !== undefined) model.headwear_id = headwear_id;
       if (accessories !== undefined) model.accessories = accessories;
+      if (accessories_id !== undefined) model.accessories_id = accessories_id;
       if (outerwear !== undefined) model.outerwear = outerwear;
+      if (outerwear_id !== undefined) model.outerwear_id = outerwear_id;
       if (bag !== undefined) model.bag = bag;
+      if (bag_id !== undefined) model.bag_id = bag_id;
       if (shoes !== undefined) model.shoes = shoes;
+      if (shoes_id !== undefined) model.shoes_id = shoes_id;
       if (other_clothing !== undefined) model.other_clothing = other_clothing;
+      if (other_clothing_id !== undefined) model.other_clothing_id = other_clothing_id;
       if (description !== undefined) model.description = description;
       if (current_avatar_url !== undefined) model.current_avatar_url = current_avatar_url;
       if (current_tryon_image_url !== undefined) model.current_tryon_image_url = current_tryon_image_url;
@@ -114,13 +130,21 @@ exports.createOrUpdateUserModel = async (userId, modelData) => {
         mood: mood || null,
         style_preference: style_preference || null,
         top_garment: top_garment || '',
+        top_garment_id: top_garment_id || '',
         bottom_garment: bottom_garment || '',
+        bottom_garment_id: bottom_garment_id || '',
         headwear: headwear || '',
+        headwear_id: headwear_id || '',
         accessories: accessories || '',
+        accessories_id: accessories_id || '',
         outerwear: outerwear || '',
+        outerwear_id: outerwear_id || '',
         bag: bag || '',
+        bag_id: bag_id || '',
         shoes: shoes || '',
+        shoes_id: shoes_id || '',
         other_clothing: other_clothing || '',
+        other_clothing_id: other_clothing_id || '',
         description: description || '',
         status: '启用' // 确保设置为启用状态
       });
@@ -154,13 +178,21 @@ exports.createOrUpdateUserModel = async (userId, modelData) => {
         mood: model.mood,
         style_preference: model.style_preference,
         top_garment: model.top_garment,
+        top_garment_id: model.top_garment_id,
         bottom_garment: model.bottom_garment,
+        bottom_garment_id: model.bottom_garment_id,
         headwear: model.headwear,
+        headwear_id: model.headwear_id,
         accessories: model.accessories,
+        accessories_id: model.accessories_id,
         outerwear: model.outerwear,
+        outerwear_id: model.outerwear_id,
         bag: model.bag,
+        bag_id: model.bag_id,
         shoes: model.shoes,
+        shoes_id: model.shoes_id,
         other_clothing: model.other_clothing,
+        other_clothing_id: model.other_clothing_id,
         description: model.description,
         status: model.status,
         createdAt: model.createdAt,
@@ -224,13 +256,21 @@ exports.getUserModel = async (userId) => {
         mood: model.mood,
         style_preference: model.style_preference,
         top_garment: model.top_garment,
+        top_garment_id: model.top_garment_id,
         bottom_garment: model.bottom_garment,
+        bottom_garment_id: model.bottom_garment_id,
         headwear: model.headwear,
+        headwear_id: model.headwear_id,
         accessories: model.accessories,
+        accessories_id: model.accessories_id,
         outerwear: model.outerwear,
+        outerwear_id: model.outerwear_id,
         bag: model.bag,
+        bag_id: model.bag_id,
         shoes: model.shoes,
+        shoes_id: model.shoes_id,
         other_clothing: model.other_clothing,
+        other_clothing_id: model.other_clothing_id,
         description: model.description,
         status: model.status,
         createdAt: model.createdAt,
@@ -361,8 +401,16 @@ exports.updateModelInfo = async (userId, updateData) => {
     const allowedFields = [
       'model_name', 'gender', 'age_stage', 'height', 'weight',
       'body_feature', 'suitable_weather', 'shooting_style', 'mood',
-      'style_preference', 'top_garment', 'bottom_garment', 'headwear',
-      'accessories', 'outerwear', 'bag', 'shoes', 'other_clothing', 'description',
+      'style_preference', 
+      'top_garment', 'top_garment_id', 
+      'bottom_garment', 'bottom_garment_id', 
+      'headwear', 'headwear_id', 
+      'accessories', 'accessories_id', 
+      'outerwear', 'outerwear_id', 
+      'bag', 'bag_id', 
+      'shoes', 'shoes_id', 
+      'other_clothing', 'other_clothing_id', 
+      'description',
       'current_avatar_url', 'current_tryon_image_url'
     ];
 
@@ -422,13 +470,21 @@ exports.updateModelInfo = async (userId, updateData) => {
         mood: model.mood,
         style_preference: model.style_preference,
         top_garment: model.top_garment,
+        top_garment_id: model.top_garment_id,
         bottom_garment: model.bottom_garment,
+        bottom_garment_id: model.bottom_garment_id,
         headwear: model.headwear,
+        headwear_id: model.headwear_id,
         accessories: model.accessories,
+        accessories_id: model.accessories_id,
         outerwear: model.outerwear,
+        outerwear_id: model.outerwear_id,
         bag: model.bag,
+        bag_id: model.bag_id,
         shoes: model.shoes,
+        shoes_id: model.shoes_id,
         other_clothing: model.other_clothing,
+        other_clothing_id: model.other_clothing_id,
         description: model.description,
         current_avatar_url: model.current_avatar_url,
         current_tryon_image_url: model.current_tryon_image_url,

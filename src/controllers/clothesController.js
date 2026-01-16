@@ -175,6 +175,33 @@ exports.updateClothes = async (req, res) => {
   }
 };
 
+// 根据衣服ID（clothesId）获取衣服的二维码
+exports.getClothesQrCode = async (req, res) => {
+  try {
+    const { clothesId } = req.params; // 使用clothesId（不是MongoDB _id）
+
+    if (!clothesId) {
+      return res.status(400).json({
+        success: false,
+        message: '衣服ID不能为空'
+      });
+    }
+
+    const result = await clothesService.getClothesQrCode(clothesId);
+
+    res.status(200).json({
+      success: true,
+      message: '获取衣服二维码成功',
+      data: result
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      message: error.message || '获取衣服二维码失败'
+    });
+  }
+};
+
 // 根据_id删除指定衣服
 exports.deleteClothes = async (req, res) => {
   try {

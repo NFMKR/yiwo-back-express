@@ -15,7 +15,22 @@ exports.wechatLogin = async (req, res) => {
       });
     }
 
+    // 添加日志，帮助诊断问题
+    console.log('微信登录请求:', {
+      codeLength: code ? code.length : 0,
+      codePrefix: code ? code.substring(0, 10) + '...' : 'null',
+      hasUserInfo: !!userInfo,
+      userAgent: req.get('user-agent'),
+      ip: req.ip || req.connection.remoteAddress
+    });
+
     const result = await userService.wechatLogin(code, userInfo || {});
+
+    console.log('微信登录成功:', {
+      userId: result.user?.id,
+      isNewUser: !result.user?.id ? '新用户' : '老用户',
+      openid: result.user?.openid ? result.user.openid.substring(0, 10) + '...' : 'null'
+    });
 
     res.status(200).json({
       success: true,
@@ -23,6 +38,12 @@ exports.wechatLogin = async (req, res) => {
       data: result
     });
   } catch (error) {
+    console.error('微信登录失败:', {
+      error: error.message,
+      codeLength: req.body?.code ? req.body.code.length : 0,
+      stack: error.stack
+    });
+
     res.status(400).json({
       success: false,
       message: error.message || '微信登录失败'

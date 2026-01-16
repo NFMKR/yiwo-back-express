@@ -12,7 +12,8 @@ exports.createShop = async (userId, shopData) => {
       shopId, 
       shopName, 
       avatarUrl, 
-      qrcodeUrl, 
+      qrcodeUrl,
+      contactQrcodeUrl,
       background_image_url,
       memberLevel, 
       wechatId 
@@ -38,6 +39,7 @@ exports.createShop = async (userId, shopData) => {
       shopName: shopName || '未命名店铺',
       avatarUrl: avatarUrl || '',
       qrcodeUrl: qrcodeUrl || '',
+      contactQrcodeUrl: contactQrcodeUrl || '',
       background_image_url: background_image_url || '',
       memberLevel: memberLevel || '普通会员',
       wechatId: wechatId || ''
@@ -73,6 +75,7 @@ exports.createShop = async (userId, shopData) => {
         shopName: shop.shopName,
         avatarUrl: shop.avatarUrl,
         qrcodeUrl: shop.qrcodeUrl,
+        contactQrcodeUrl: shop.contactQrcodeUrl,
         background_image_url: shop.background_image_url,
         memberLevel: shop.memberLevel,
         wechatId: shop.wechatId,
@@ -103,7 +106,7 @@ exports.updateShop = async (userId, shopIdOrShopIdValue, updateData) => {
 
     // 允许更新的字段
     const allowedFields = [
-      'shopName', 'avatarUrl', 'qrcodeUrl', 'background_image_url',
+      'shopName', 'avatarUrl', 'qrcodeUrl', 'contactQrcodeUrl', 'background_image_url',
       'memberLevel', 'wechatId'
     ];
 
@@ -157,6 +160,7 @@ exports.updateShop = async (userId, shopIdOrShopIdValue, updateData) => {
         shopName: shop.shopName,
         avatarUrl: shop.avatarUrl,
         qrcodeUrl: shop.qrcodeUrl,
+        contactQrcodeUrl: shop.contactQrcodeUrl,
         background_image_url: shop.background_image_url,
         memberLevel: shop.memberLevel,
         wechatId: shop.wechatId,
@@ -182,6 +186,7 @@ exports.getUserShops = async (userId) => {
         shopName: shop.shopName,
         avatarUrl: shop.avatarUrl,
         qrcodeUrl: shop.qrcodeUrl,
+        contactQrcodeUrl: shop.contactQrcodeUrl,
         background_image_url: shop.background_image_url,
         memberLevel: shop.memberLevel,
         wechatId: shop.wechatId,
@@ -258,6 +263,7 @@ exports.getShopInfo = async (shopIdOrShopIdValue, userId = null) => {
         shopName: shop.shopName,
         avatarUrl: shop.avatarUrl,
         qrcodeUrl: shop.qrcodeUrl,
+        contactQrcodeUrl: shop.contactQrcodeUrl,
         background_image_url: shop.background_image_url,
         memberLevel: shop.memberLevel,
         wechatId: shop.wechatId,

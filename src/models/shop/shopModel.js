@@ -29,6 +29,11 @@ const shopSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // 店铺联系二维码URL
+  contactQrcodeUrl: {
+    type: String,
+    default: ''
+  },
   // 店铺背景图URL
   background_image_url: {
     type: String,

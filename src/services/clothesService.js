@@ -41,6 +41,9 @@ exports.createClothes = async (clothesData) => {
       }
     }
 
+    // 自动从店铺获取联系二维码URL，如果请求中提供了则使用请求中的值
+    const finalShopQrImageUrl = shop_qr_image_url || shop.contactQrcodeUrl || '';
+
     // 创建新衣服（所有字段都有默认值）
     const clothes = new Clothes({
       clothesId: finalClothesId,
@@ -52,7 +55,7 @@ exports.createClothes = async (clothesData) => {
       price: price !== undefined ? price : 0,
       status: status || '上架',
       description: description || '',
-      shop_qr_image_url: shop_qr_image_url || ''
+      shop_qr_image_url: finalShopQrImageUrl // 自动填充店铺联系二维码
     });
 
     await clothes.save();
@@ -173,7 +176,7 @@ exports.updateClothes = async (clothesId, updateData) => {
       throw new Error('衣服不存在');
     }
 
-    // 如果更新了shopId，需要同步更新shopName
+    // 如果更新了shopId，需要同步更新shopName和shop_qr_image_url
     if (updateData.shopId && updateData.shopId !== clothes.shopId) {
       const shop = await Shop.findOne({ shopId: updateData.shopId });
       if (!shop) {
@@ -181,6 +184,10 @@ exports.updateClothes = async (clothesId, updateData) => {
       }
       clothes.shopId = updateData.shopId;
       clothes.shopName = shop.shopName;
+      // 如果更新了shopId且没有手动提供shop_qr_image_url，自动从新店铺获取
+      if (updateData.shop_qr_image_url === undefined) {
+        clothes.shop_qr_image_url = shop.contactQrcodeUrl || '';
+      }
     }
 
     // 更新所有可修改的字段

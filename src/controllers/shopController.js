@@ -11,7 +11,8 @@ exports.createShop = async (req, res) => {
       shopId, 
       shopName, 
       avatarUrl, 
-      qrcodeUrl, 
+      qrcodeUrl,
+      contactQrcodeUrl,
       background_image_url,
       memberLevel, 
       wechatId 
@@ -24,6 +25,7 @@ exports.createShop = async (req, res) => {
       shopName,
       avatarUrl,
       qrcodeUrl,
+      contactQrcodeUrl,
       background_image_url,
       memberLevel,
       wechatId

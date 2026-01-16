@@ -29,6 +29,11 @@ exports.createClothes = async (clothesData) => {
       throw new Error('店铺不存在');
     }
 
+    // 检查店铺是否已设置联系二维码
+    if (!shop.contactQrcodeUrl || shop.contactQrcodeUrl.trim() === '') {
+      throw new Error('请先为店铺添加店长微信二维码图片');
+    }
+
     // 如果没有提供clothesId，自动生成一个（格式：shopId-6位随机数字）
     let finalClothesId = clothesData.clothesId;
     if (!finalClothesId) {

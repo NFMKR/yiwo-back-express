@@ -59,11 +59,11 @@ const modelPersonSchema = new mongoose.Schema({
     default: null,
     index: true
   },
-     // 年龄阶段
+  // 年龄阶段（普通字符串字段，可接收任意值）
   age_stage: {
     type: String,
-    enum: ['儿童', '青少年', '青年', '中年', '老年'],
     default: null,
+    trim: true,
     index: true
   },
   // 身高（单位：cm）

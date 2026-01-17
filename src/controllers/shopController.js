@@ -184,7 +184,7 @@ exports.generateShopQRCode = async (req, res) => {
 
     // 生成并上传二维码
     const result = await qrcodeService.generateAndUploadQRCode(shop.shopId, {
-      page: page || 'pages/index/index',
+      page: page || 'pages/inspiration/index',
       width: width ? parseInt(width) : 430
     });
 

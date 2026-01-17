@@ -1,12 +1,15 @@
 // src/services/wearService.js
 
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const Wear = require('../models/ai_wear/wearModel');
 const ModelPerson = require('../models/model/modelPersonModel');
 const Clothes = require('../models/clothes/clothesModel');
 const { arkApiKey, arkApiUrl, arkModel } = require('../config');
 const { generateDefaultModelData } = require('../utils/defaultModelData');
 const modelPersonService = require('./modelPersonService');
+const { uploadToWechatCloud, generateCloudPath } = require('./wechatCloudStorageService');
 
 // 构建穿搭提示词
 const buildOutfitPrompt = (modelInfo, clothesUrls = []) => {
@@ -252,18 +255,87 @@ exports.createTryOnTask = async (userId) => {
 
     // 取第一张生成的图片
     const generatedImage = response.data.data[0];
-    const imageUrl = generatedImage.url || generatedImage.b64_json;
+    const doubaoImageUrl = generatedImage.url || generatedImage.b64_json;
 
-    if (!imageUrl) {
+    if (!doubaoImageUrl) {
       throw new Error('生成的图片URL为空');
     }
 
-    console.log('生成成功:', {
-      imageUrl: imageUrl,
+    console.log('豆包API生成成功:', {
+      doubaoImageUrl: doubaoImageUrl,
       size: generatedImage.size,
       model: response.data.model,
       created: response.data.created
     });
+
+    // 下载豆包图片并上传到微信云存储，获取永久URL
+    let imageUrl = doubaoImageUrl; // 默认使用豆包URL
+    let tempFilePath = null;
+    
+    try {
+      console.log('开始下载豆包图片并上传到微信云存储...');
+      
+      // 1. 下载豆包图片到临时文件
+      const tempDir = path.join(__dirname, '../../temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      const timestamp = Date.now();
+      const taskIdForFile = response.data.created?.toString() || timestamp.toString();
+      const filename = `tryon_${userId}_${taskIdForFile}.png`;
+      tempFilePath = path.join(tempDir, filename);
+      
+      // 下载图片（如果是base64，需要解码；如果是URL，直接下载）
+      if (doubaoImageUrl.startsWith('data:image/')) {
+        // Base64格式，需要解码
+        const base64Data = doubaoImageUrl.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        fs.writeFileSync(tempFilePath, buffer);
+      } else {
+        // URL格式，使用axios下载
+        const imageResponse = await axios({
+          url: doubaoImageUrl,
+          method: 'GET',
+          responseType: 'arraybuffer'
+        });
+        fs.writeFileSync(tempFilePath, imageResponse.data);
+      }
+      
+      console.log('豆包图片下载成功，临时文件:', tempFilePath);
+      
+      // 2. 上传到微信云存储
+      const cloudPath = generateCloudPath('tryon', filename);
+      const uploadResult = await uploadToWechatCloud(tempFilePath, cloudPath);
+      
+      // 3. 使用云存储的永久URL
+      if (uploadResult.file_url) {
+        imageUrl = uploadResult.file_url;
+        console.log('图片上传到微信云存储成功，永久URL:', imageUrl);
+      } else {
+        console.warn('上传成功但未获取到file_url，使用豆包原始URL');
+      }
+      
+      // 4. 删除临时文件
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
+        tempFilePath = null;
+        console.log('临时文件已删除');
+      }
+    } catch (uploadError) {
+      console.error('下载并上传图片到微信云存储失败:', uploadError);
+      // 如果上传失败，仍然使用豆包的URL（但会过期）
+      console.warn('使用豆包原始URL（48小时后将失效）:', doubaoImageUrl);
+      // 清理临时文件
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        try {
+          fs.unlinkSync(tempFilePath);
+        } catch (cleanupError) {
+          console.error('清理临时文件失败:', cleanupError);
+        }
+      }
+      // 继续使用豆包的URL，不抛出错误，避免整个流程失败
+    }
 
     // 保存任务到数据库（在清空衣服字段之前，记录衣服信息）
     const topGarmentUrl = modelPerson.top_garment || null;

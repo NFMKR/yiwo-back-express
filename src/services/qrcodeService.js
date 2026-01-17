@@ -57,12 +57,18 @@ exports.generateAndUploadQRCode = async (shopId, options = {}) => {
     const token = await getAccessToken();
 
     // 2. 调用微信API生成小程序码
+    // 关键：scene 必须是 'shopId=xxx' 格式，不能只是 'xxx'
+    // 这样前端才能从 res.query.shopId 中正确获取店铺ID
+    const sceneValue = `shopId=${shopId}`;
+    
     const response = await wechatAxiosInstance.post(
       `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${token}`,
       {
-        scene: shopId, // 场景值，使用shopId
+        scene: sceneValue, // ✅ 关键：必须是 'shopId=xxx' 格式
         page: page, // 小程序页面路径
         width: width, // 二维码宽度
+        check_path: false, // 不检查页面路径是否存在（避免路径检查失败）
+        env_version: 'release', // 环境版本：release（正式环境）/trial（体验版）/develop（开发版）
         auto_color: false, // 自动配置线条颜色
         line_color: { r: 0, g: 0, b: 0 }, // 线条颜色（黑色）
         is_hyaline: false // 是否需要透明底色

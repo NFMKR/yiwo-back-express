@@ -6,11 +6,10 @@ const wechatCloudStorageService = require('./wechatCloudStorageService');
 const fs = require('fs');
 const path = require('path');
 
-// 创建或更新用户的模特（上传图片后创建）
+// 创建或更新用户的模特
 exports.createOrUpdateUserModel = async (userId, modelData) => {
   try {
     const {
-      full_body_image_url,
       model_name,
       gender,
       age_stage,
@@ -42,29 +41,11 @@ exports.createOrUpdateUserModel = async (userId, modelData) => {
       current_tryon_image_url
     } = modelData;
 
-    // 验证必填字段
-    if (!full_body_image_url) {
-      throw new Error('全身图URL不能为空');
-    }
-
     // 查找用户是否已有模特
     let model = await ModelPerson.findOne({ user_id: userId });
 
     if (model) {
-      // 更新现有模特
-      // 将新图片添加到头像数组（如果提供了full_body_image_url）
-      if (full_body_image_url) {
-        // 生成唯一的头像ID
-        const avatarId = await generateUniqueModelAvatarId();
-        model.avatar_images.push({
-          model_avatar_id: avatarId,
-          avatar_images_url: full_body_image_url
-        });
-        // 如果当前头像为空，设置为新上传的图片
-        if (!model.current_avatar_url) {
-          model.current_avatar_url = full_body_image_url;
-        }
-      }
+      // 更新现有模特（不再自动添加图片到avatar_images）
 
       // 更新其他字段
       if (model_name !== undefined) model.model_name = model_name;
@@ -100,25 +81,20 @@ exports.createOrUpdateUserModel = async (userId, modelData) => {
       model.updatedAt = Date.now();
       await model.save();
     } else {
-      // 创建新模特
-      // 生成唯一的头像ID
-      const avatarId = await generateUniqueModelAvatarId();
+      // 创建新模特（avatar_images留空，由用户自己上传头像）
+      // 默认头像URL（用于current_avatar_url，但不添加到avatar_images数组）
+      const defaultAvatarUrl = 'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/personavatar3.png';
       
       console.log('创建新模特:', {
         userId: userId.toString(),
-        avatarId,
-        full_body_image_url,
-        current_avatar_url: current_avatar_url || full_body_image_url
+        current_avatar_url: current_avatar_url || defaultAvatarUrl
       });
       
       model = new ModelPerson({
         user_id: userId,
         model_name: model_name || '我的模特',
-        avatar_images: [{
-          model_avatar_id: avatarId,
-          avatar_images_url: full_body_image_url
-        }],
-        current_avatar_url: current_avatar_url || full_body_image_url, // 优先使用传入的current_avatar_url
+        avatar_images: [], // 留空，用户自己上传头像
+        current_avatar_url: current_avatar_url || defaultAvatarUrl, // 使用默认头像或传入的头像URL
         current_tryon_image_url: current_tryon_image_url || '', // 设置当前试穿效果图URL
         gender: gender || null,
         age_stage: age_stage || null,
@@ -216,17 +192,11 @@ exports.getUserModel = async (userId) => {
       };
     }
 
-    // 兼容旧数据：为缺少 model_avatar_id 的头像自动生成ID，并转换字段名
+    // 为缺少 model_avatar_id 的头像自动生成ID
     if (model.avatar_images && model.avatar_images.length > 0) {
       let needsSave = false;
       for (let i = 0; i < model.avatar_images.length; i++) {
         const avatar = model.avatar_images[i];
-        // 转换旧字段名
-        if (avatar.full_body_image_url && !avatar.avatar_images_url) {
-          avatar.avatar_images_url = avatar.full_body_image_url;
-          delete avatar.full_body_image_url;
-          needsSave = true;
-        }
         // 生成缺失的 model_avatar_id
         if (!avatar.model_avatar_id) {
           avatar.model_avatar_id = await generateUniqueModelAvatarId();
@@ -283,7 +253,7 @@ exports.getUserModel = async (userId) => {
 };
 
 // 更新当前头像
-exports.updateCurrentAvatar = async (userId, fullBodyImageUrl) => {
+exports.updateCurrentAvatar = async (userId, avatarImagesUrl) => {
   try {
     const model = await ModelPerson.findOne({ user_id: userId });
 
@@ -291,16 +261,16 @@ exports.updateCurrentAvatar = async (userId, fullBodyImageUrl) => {
       throw new Error('用户尚未创建模特');
     }
 
-    // 检查图片是否在数组中
+    // 检查图片是否在avatar_images数组中
     const imageExists = model.avatar_images.some(
-      img => img.avatar_images_url === fullBodyImageUrl
+      img => img.avatar_images_url === avatarImagesUrl
     );
 
     if (!imageExists) {
       throw new Error('该图片不在用户的模特图片列表中');
     }
 
-    model.current_avatar_url = fullBodyImageUrl;
+    model.current_avatar_url = avatarImagesUrl;
     model.updatedAt = Date.now();
     await model.save();
 
@@ -335,8 +305,8 @@ exports.updateCurrentTryonImage = async (userId, tryonImageUrl) => {
   }
 };
 
-// 删除模特图片（从数组中移除，通过URL）
-exports.deleteModelImage = async (userId, fullBodyImageUrl) => {
+// 删除模特图片（从数组中移除，通过avatar_images_url）
+exports.deleteModelImage = async (userId, avatarImagesUrl) => {
   try {
     const model = await ModelPerson.findOne({ user_id: userId });
 
@@ -345,13 +315,13 @@ exports.deleteModelImage = async (userId, fullBodyImageUrl) => {
     }
 
     // 检查是否是当前头像
-    if (model.current_avatar_url === fullBodyImageUrl) {
+    if (model.current_avatar_url === avatarImagesUrl) {
       throw new Error('不能删除当前使用的头像，请先切换其他头像');
     }
 
     // 从数组中移除
     model.avatar_images = model.avatar_images.filter(
-      img => img.avatar_images_url !== fullBodyImageUrl
+      img => img.avatar_images_url !== avatarImagesUrl
     );
 
     model.updatedAt = Date.now();
@@ -375,17 +345,11 @@ exports.updateModelInfo = async (userId, updateData) => {
       throw new Error('用户尚未创建模特');
     }
 
-    // 兼容旧数据：为缺少 model_avatar_id 的头像自动生成ID，并转换字段名
+    // 为缺少 model_avatar_id 的头像自动生成ID
     if (model.avatar_images && model.avatar_images.length > 0) {
       let needsSave = false;
       for (let i = 0; i < model.avatar_images.length; i++) {
         const avatar = model.avatar_images[i];
-        // 转换旧字段名
-        if (avatar.full_body_image_url && !avatar.avatar_images_url) {
-          avatar.avatar_images_url = avatar.full_body_image_url;
-          delete avatar.full_body_image_url;
-          needsSave = true;
-        }
         // 生成缺失的 model_avatar_id
         if (!avatar.model_avatar_id) {
           avatar.model_avatar_id = await generateUniqueModelAvatarId();
@@ -560,7 +524,7 @@ exports.addModelAvatar = async (userId, file) => {
       message: '头像上传并添加成功',
       avatar_images: model.avatar_images.map(avatar => ({
         model_avatar_id: avatar.model_avatar_id,
-        avatar_images_url: avatar.avatar_images_url || avatar.full_body_image_url || ''
+        avatar_images_url: avatar.avatar_images_url || ''
       })),
       current_avatar_url: model.current_avatar_url
     };
@@ -586,7 +550,7 @@ exports.deleteModelAvatarById = async (userId, modelAvatarId) => {
       throw new Error('用户尚未创建模特');
     }
 
-    // 查找要删除的头像（兼容新旧字段）
+    // 查找要删除的头像
     const avatarToDelete = model.avatar_images.find(
       img => img.model_avatar_id === modelAvatarId
     );
@@ -595,8 +559,8 @@ exports.deleteModelAvatarById = async (userId, modelAvatarId) => {
       throw new Error('未找到指定的头像');
     }
 
-    // 获取头像URL（兼容新旧字段）
-    const avatarUrl = avatarToDelete.avatar_images_url || avatarToDelete.full_body_image_url;
+    // 获取头像URL
+    const avatarUrl = avatarToDelete.avatar_images_url;
 
     // 检查是否是当前头像
     if (model.current_avatar_url === avatarUrl) {
@@ -629,39 +593,17 @@ exports.getModelAvatars = async (userId) => {
       throw new Error('用户尚未创建模特');
     }
 
-    // 兼容旧数据：如果存在 full_body_image_url，转换为 avatar_images_url
-    let needsSave = false;
-    const processedAvatarImages = model.avatar_images.map((avatar, index) => {
+    // 处理头像列表，返回标准格式
+    const processedAvatarImages = model.avatar_images.map((avatar) => {
       // 使用 toObject() 方法获取纯对象，避免 Mongoose 文档的复杂性
       const avatarObj = avatar.toObject ? avatar.toObject() : (avatar instanceof Object ? avatar : {});
       
-      // 获取URL（优先使用新字段，兼容旧字段）
-      let avatarUrl = avatarObj.avatar_images_url || avatarObj.full_body_image_url || '';
-      
-      // 如果存在旧字段 full_body_image_url，转换为新字段 avatar_images_url
-      if (avatarObj.full_body_image_url && !avatarObj.avatar_images_url) {
-        avatarUrl = avatarObj.full_body_image_url;
-        // 更新模型中的字段
-        if (model.avatar_images[index]) {
-          model.avatar_images[index].avatar_images_url = avatarObj.full_body_image_url;
-          // 使用 markModified 标记子文档已修改
-          model.markModified('avatar_images');
-          delete model.avatar_images[index].full_body_image_url;
-          needsSave = true;
-        }
-      }
-      
-      // 确保返回的数据格式正确：包含 model_avatar_id 和 avatar_images_url
+      // 返回标准格式：包含 model_avatar_id 和 avatar_images_url
       return {
         model_avatar_id: avatarObj.model_avatar_id || '',
-        avatar_images_url: avatarUrl
+        avatar_images_url: avatarObj.avatar_images_url || ''
       };
     });
-
-    // 如果有数据迁移，保存模型
-    if (needsSave) {
-      await model.save();
-    }
 
     return {
       message: '获取头像列表成功',

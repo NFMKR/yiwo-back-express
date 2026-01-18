@@ -2,12 +2,11 @@
 
 const modelPersonService = require('../services/modelPersonService');
 
-// 创建或更新用户的模特（上传图片后创建）
+// 创建或更新用户的模特
 exports.createOrUpdateUserModel = async (req, res) => {
   try {
     const userId = req.user.userId; // 从认证中间件获取
     const {
-      full_body_image_url,
       model_name,
       gender,
       age_stage,
@@ -19,26 +18,27 @@ exports.createOrUpdateUserModel = async (req, res) => {
       mood,
       style_preference,
       top_garment,
+      top_garment_id,
       bottom_garment,
+      bottom_garment_id,
       headwear,
+      headwear_id,
       accessories,
+      accessories_id,
       outerwear,
+      outerwear_id,
       bag,
+      bag_id,
       shoes,
+      shoes_id,
       other_clothing,
-      description
+      other_clothing_id,
+      description,
+      current_avatar_url,
+      current_tryon_image_url
     } = req.body;
 
-    // 验证必填字段
-    if (!full_body_image_url) {
-      return res.status(400).json({
-        success: false,
-        message: '全身图URL不能为空'
-      });
-    }
-
     const result = await modelPersonService.createOrUpdateUserModel(userId, {
-      full_body_image_url,
       model_name,
       gender,
       age_stage,
@@ -50,14 +50,24 @@ exports.createOrUpdateUserModel = async (req, res) => {
       mood,
       style_preference,
       top_garment,
+      top_garment_id,
       bottom_garment,
+      bottom_garment_id,
       headwear,
+      headwear_id,
       accessories,
+      accessories_id,
       outerwear,
+      outerwear_id,
       bag,
+      bag_id,
       shoes,
+      shoes_id,
       other_clothing,
-      description
+      other_clothing_id,
+      description,
+      current_avatar_url,
+      current_tryon_image_url
     });
 
     res.status(201).json({
@@ -97,16 +107,16 @@ exports.getUserModel = async (req, res) => {
 exports.updateCurrentAvatar = async (req, res) => {
   try {
     const userId = req.user.userId; // 从认证中间件获取
-    const { full_body_image_url } = req.body;
+    const { avatar_images_url } = req.body; // 使用avatar_images_url参数名
 
-    if (!full_body_image_url) {
+    if (!avatar_images_url) {
       return res.status(400).json({
         success: false,
-        message: '全身图URL不能为空'
+        message: '头像URL不能为空'
       });
     }
 
-    const result = await modelPersonService.updateCurrentAvatar(userId, full_body_image_url);
+    const result = await modelPersonService.updateCurrentAvatar(userId, avatar_images_url);
 
     res.status(200).json({
       success: true,
@@ -149,20 +159,20 @@ exports.updateCurrentTryonImage = async (req, res) => {
   }
 };
 
-// 删除模特图片（通过URL，保留用于兼容）
+// 删除模特图片（通过avatar_images_url）
 exports.deleteModelImage = async (req, res) => {
   try {
     const userId = req.user.userId; // 从认证中间件获取
-    const { full_body_image_url } = req.body;
+    const { avatar_images_url } = req.body; // 使用avatar_images_url参数名
 
-    if (!full_body_image_url) {
+    if (!avatar_images_url) {
       return res.status(400).json({
         success: false,
-        message: '全身图URL不能为空'
+        message: '头像URL不能为空'
       });
     }
 
-    const result = await modelPersonService.deleteModelImage(userId, full_body_image_url);
+    const result = await modelPersonService.deleteModelImage(userId, avatar_images_url);
 
     res.status(200).json({
       success: true,

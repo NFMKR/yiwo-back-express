@@ -5,9 +5,10 @@ const FormData = require('form-data');
 const { wechatAppId, wechatAppSecret, wechatCloudEnvId } = require('../config');
 const { wechatAxiosInstance } = require('../utils/wechatApi'); // 使用微信专用axios实例（跳过SSL证书校验）
 
-// 获取微信云开发access_token
+// 获取微信云开发access_token（统一管理，避免多个服务独立缓存导致token不一致）
 let accessToken = null;
 let tokenExpireTime = 0;
+let tokenRefreshPromise = null; // 用于防止并发时重复获取token
 
 const getAccessToken = async () => {
   try {
@@ -16,26 +17,59 @@ const getAccessToken = async () => {
       return accessToken;
     }
 
-    // 使用标准的 getAccessToken API（之前可以工作的方式）
-    const response = await wechatAxiosInstance.get('https://api.weixin.qq.com/cgi-bin/token', {
-      params: {
-        grant_type: 'client_credential',
-        appid: wechatAppId,
-        secret: wechatAppSecret
-      }
-    });
-
-    if (response.data.errcode) {
-      throw new Error(`获取access_token失败: ${response.data.errmsg}`);
+    // 如果正在刷新token，等待刷新完成
+    if (tokenRefreshPromise) {
+      return await tokenRefreshPromise;
     }
 
-    accessToken = response.data.access_token;
-    // token有效期7200秒，提前5分钟刷新
-    const expiresIn = response.data.expires_in || 7200;
-    tokenExpireTime = Date.now() + (expiresIn - 300) * 1000;
+    // 开始获取新token（使用getStableAccessToken，稳定版token，避免并发冲突）
+    tokenRefreshPromise = (async () => {
+      try {
+        // 优先使用稳定版token API（推荐，避免并发冲突）
+        let response;
+        try {
+          response = await wechatAxiosInstance.post('https://api.weixin.qq.com/cgi-bin/stable_token', {
+            grant_type: 'client_credential',
+            appid: wechatAppId,
+            secret: wechatAppSecret,
+            force_refresh: false // 不强制刷新，如果有有效token则复用
+          });
+        } catch (stableTokenError) {
+          // 如果稳定版API失败，回退到标准API
+          console.warn('稳定版token API失败，回退到标准API:', stableTokenError.message);
+          response = await wechatAxiosInstance.get('https://api.weixin.qq.com/cgi-bin/token', {
+            params: {
+              grant_type: 'client_credential',
+              appid: wechatAppId,
+              secret: wechatAppSecret
+            }
+          });
+        }
 
-    return accessToken;
+        if (response.data.errcode) {
+          throw new Error(`获取access_token失败: ${response.data.errmsg || response.data.errcode}`);
+        }
+
+        const newToken = response.data.access_token;
+        // token有效期7200秒，提前5分钟刷新
+        const expiresIn = response.data.expires_in || 7200;
+        const newExpireTime = Date.now() + (expiresIn - 300) * 1000;
+
+        // 更新token
+        accessToken = newToken;
+        tokenExpireTime = newExpireTime;
+
+        return newToken;
+      } finally {
+        // 清除刷新Promise，允许下次刷新
+        tokenRefreshPromise = null;
+      }
+    })();
+
+    return await tokenRefreshPromise;
   } catch (error) {
+    // 如果获取失败，清除刷新Promise
+    tokenRefreshPromise = null;
     throw new Error(`获取微信access_token失败: ${error.message}`);
   }
 };

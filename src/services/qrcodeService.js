@@ -8,8 +8,6 @@ const { wechatAxiosInstance } = require('../utils/wechatApi');
 const { uploadToWechatCloud, generateCloudPath } = require('./wechatCloudStorageService');
 
 // 复用wechatCloudStorageService的统一token管理，避免多个服务独立缓存导致token不一致
-const { wechatAppId, wechatAppSecret } = require('../config');
-const { wechatAxiosInstance } = require('../utils/wechatApi');
 
 // 共享token缓存（与wechatCloudStorageService使用相同的token）
 let sharedAccessToken = null;

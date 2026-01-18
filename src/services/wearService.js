@@ -268,74 +268,10 @@ exports.createTryOnTask = async (userId) => {
       created: response.data.created
     });
 
-    // 下载豆包图片并上传到微信云存储，获取永久URL
-    let imageUrl = doubaoImageUrl; // 默认使用豆包URL
-    let tempFilePath = null;
-    
-    try {
-      console.log('开始下载豆包图片并上传到微信云存储...');
-      
-      // 1. 下载豆包图片到临时文件
-      const tempDir = path.join(__dirname, '../../temp');
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
-      
-      const timestamp = Date.now();
-      const taskIdForFile = response.data.created?.toString() || timestamp.toString();
-      const filename = `tryon_${userId}_${taskIdForFile}.png`;
-      tempFilePath = path.join(tempDir, filename);
-      
-      // 下载图片（如果是base64，需要解码；如果是URL，直接下载）
-      if (doubaoImageUrl.startsWith('data:image/')) {
-        // Base64格式，需要解码
-        const base64Data = doubaoImageUrl.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-        fs.writeFileSync(tempFilePath, buffer);
-      } else {
-        // URL格式，使用axios下载
-        const imageResponse = await axios({
-          url: doubaoImageUrl,
-          method: 'GET',
-          responseType: 'arraybuffer'
-        });
-        fs.writeFileSync(tempFilePath, imageResponse.data);
-      }
-      
-      console.log('豆包图片下载成功，临时文件:', tempFilePath);
-      
-      // 2. 上传到微信云存储
-      const cloudPath = generateCloudPath('tryon', filename);
-      const uploadResult = await uploadToWechatCloud(tempFilePath, cloudPath);
-      
-      // 3. 使用云存储的永久URL
-      if (uploadResult.file_url) {
-        imageUrl = uploadResult.file_url;
-        console.log('图片上传到微信云存储成功，永久URL:', imageUrl);
-      } else {
-        console.warn('上传成功但未获取到file_url，使用豆包原始URL');
-      }
-      
-      // 4. 删除临时文件
-      if (fs.existsSync(tempFilePath)) {
-        fs.unlinkSync(tempFilePath);
-        tempFilePath = null;
-        console.log('临时文件已删除');
-      }
-    } catch (uploadError) {
-      console.error('下载并上传图片到微信云存储失败:', uploadError);
-      // 如果上传失败，仍然使用豆包的URL（但会过期）
-      console.warn('使用豆包原始URL（48小时后将失效）:', doubaoImageUrl);
-      // 清理临时文件
-      if (tempFilePath && fs.existsSync(tempFilePath)) {
-        try {
-          fs.unlinkSync(tempFilePath);
-        } catch (cleanupError) {
-          console.error('清理临时文件失败:', cleanupError);
-        }
-      }
-      // 继续使用豆包的URL，不抛出错误，避免整个流程失败
-    }
+    // 先使用豆包URL，图片上传改为异步后台任务（避免超时）
+    // 504超时问题：云托管网关超时通常是60秒，而豆包API + 下载 + 上传可能超过这个时间
+    // 解决方案：先返回结果给用户，图片上传在后台异步进行
+    let imageUrl = doubaoImageUrl; // 默认使用豆包URL（先返回给用户）
 
     // 保存任务到数据库（在清空衣服字段之前，记录衣服信息）
     const topGarmentUrl = modelPerson.top_garment || null;
@@ -382,6 +318,76 @@ exports.createTryOnTask = async (userId) => {
     
     modelPerson.updatedAt = Date.now();
     await modelPerson.save();
+
+    // 异步上传图片到微信云存储（后台任务，不阻塞响应）
+    // 使用保存后的taskId来更新记录
+    const finalTaskId = wearTask.taskId;
+    (async () => {
+      try {
+        console.log('开始异步下载豆包图片并上传到微信云存储...');
+        
+        // 1. 下载豆包图片到临时文件
+        const tempDir = path.join(__dirname, '../../temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        const timestamp = Date.now();
+        const filename = `tryon_${userId}_${finalTaskId}.png`;
+        const tempFilePath = path.join(tempDir, filename);
+        
+        // 下载图片（如果是base64，需要解码；如果是URL，直接下载）
+        if (doubaoImageUrl.startsWith('data:image/')) {
+          // Base64格式，需要解码
+          const base64Data = doubaoImageUrl.replace(/^data:image\/\w+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+          fs.writeFileSync(tempFilePath, buffer);
+        } else {
+          // URL格式，使用axios下载
+          const imageResponse = await axios({
+            url: doubaoImageUrl,
+            method: 'GET',
+            responseType: 'arraybuffer',
+            timeout: 10000 // 10秒超时
+          });
+          fs.writeFileSync(tempFilePath, imageResponse.data);
+        }
+        
+        console.log('豆包图片下载成功，临时文件:', tempFilePath);
+        
+        // 2. 上传到微信云存储
+        const cloudPath = generateCloudPath('tryon', filename);
+        const uploadResult = await uploadToWechatCloud(tempFilePath, cloudPath);
+        
+        // 3. 删除临时文件
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+        
+        // 4. 如果上传成功，异步更新数据库中的imageUrl
+        if (uploadResult.file_url) {
+          console.log('图片上传到微信云存储成功，永久URL:', uploadResult.file_url);
+          
+          // 异步更新试穿记录的imageUrl
+          await Wear.findOneAndUpdate(
+            { taskId: finalTaskId },
+            { imageUrl: uploadResult.file_url },
+            { new: true }
+          ).catch(err => console.error('更新试穿记录URL失败:', err));
+          
+          // 异步更新模特的current_tryon_image_url
+          await ModelPerson.findOneAndUpdate(
+            { user_id: userId },
+            { current_tryon_image_url: uploadResult.file_url }
+          ).catch(err => console.error('更新模特试穿URL失败:', err));
+        }
+      } catch (error) {
+        console.error('异步上传图片到微信云存储失败:', error.message);
+        // 上传失败不影响主流程，继续使用豆包URL
+      }
+    })().catch(err => {
+      console.error('后台上传任务失败:', err.message);
+    });
 
     // 构建返回的衣服信息（只返回有值的字段）
     const returnedClothes = {};

@@ -20,7 +20,7 @@ const buildOutfitPrompt = (modelInfo, clothesUrls = []) => {
     prompt += `模特是${modelInfo.gender}性，`;
   }
   if (modelInfo.age_stage) {
-    prompt += `${modelInfo.age_stage}年龄段，`;
+    prompt += `${modelInfo.age_stage}出生的，`;
   }
   if (modelInfo.height) {
     prompt += `身高${modelInfo.height}cm，`;

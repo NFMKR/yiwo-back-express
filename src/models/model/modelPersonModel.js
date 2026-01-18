@@ -11,7 +11,7 @@ const modelImageSchema = new mongoose.Schema({
   },
   avatar_images_url: {
     type: String,
-    required: true
+    required: false
   }
 }, { _id: false });
 
@@ -83,7 +83,7 @@ const modelPersonSchema = new mongoose.Schema({
   // 身体特征
   body_feature: {
     type: String,
-    enum: ['纤瘦', '标准', '健壮', '丰满', '运动型'],
+    enum: ['标准','梨型','苹果型','沙漏型','矩形','健美型','大码','其它'],
     default: null,
     index: true
   },

@@ -7,8 +7,8 @@
  */
 exports.generateDefaultModelData = () => {
   // 固定的默认头像URL
-  const defaultAvatarUrl = 'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/personavatar2.png';
-  const defaultTryonImageUrl = 'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/person2.png';
+  const defaultAvatarUrl = 'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/personavatar3.png';
+  const defaultTryonImageUrl = 'https://7072-prod-4g0apka18663bf93-1395010318.tcb.qcloud.la/yiwo-image/model/person3.png';
 
   return {
     model_name: '我的模特',

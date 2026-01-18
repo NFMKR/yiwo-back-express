@@ -1,4 +1,4 @@
-// src/models/ai_wear/wearModel.js
+// src/models/ai_wear/wearModel.js  试穿记录生成
 
 const mongoose = require('mongoose');
 
